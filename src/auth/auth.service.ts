@@ -65,6 +65,8 @@ export class AuthService {
     const user = await this.usersService.createUser({
       name: registerDto.name,
       email: registerDto.email,
+      phoneNumber:registerDto.phoneNumber,
+      address:registerDto.address,
       password: hashedPassword,
       role: UserRole.USER, // Default role for normal registration
     });

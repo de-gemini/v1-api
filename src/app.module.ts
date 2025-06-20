@@ -14,6 +14,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { CleaningTimeModule } from './cleaning_time/cleaning_time.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { join } from 'path';
+import { PostcodeController } from './common/postcode.controller';
+
 
 @Module({
   imports: [
@@ -69,7 +71,7 @@ import { join } from 'path';
     CleaningTimeModule,
     CalendarModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, PostcodeController],
   providers: [AppService],
 })
 export class AppModule {}
