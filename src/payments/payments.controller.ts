@@ -1,14 +1,16 @@
-import { Controller, Post, Body, Headers, Req, UseGuards, RawBodyRequest } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { StripeService } from './services/stripe.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { MailService } from '../mail/mail.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import Stripe from 'stripe';
-import { Request } from 'express';
+import { success } from '../common/utils/response.util';
+import { SuccessResponse } from '../common/dto/success-response.dto';
 
 @ApiTags('Payments')
 @Controller('payments')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class PaymentsController {
   constructor(
     private readonly stripeService: StripeService,
@@ -17,54 +19,51 @@ export class PaymentsController {
   ) {}
 
   @Post('create-payment-intent')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a payment intent for a booking' })
-  async createPaymentIntent(
-    @Body() body: { bookingId: string },
-    @Req() req: any,
-  ) {
-    const booking = await this.bookingsService.findOne(req.user.id, body.bookingId);
+  @ApiResponse({ status: 201, type: SuccessResponse })
+  async createPaymentIntent(@Body() body: { bookingId: string }, @Req() req: any) {
+    const booking = await this.bookingsService.findOneByUser(req.user.id, body.bookingId);
     
-    const paymentIntent = await this.stripeService.createPaymentIntent(
-      booking.estimatedPrice,
-    );
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
 
-    return {
+    const paymentIntent = await this.stripeService.createPaymentIntent({
+      amount: booking.estimatedPrice,
+      currency: 'gbp',
+      metadata: {
+        bookingId: booking._id.toString(),
+        userId: req.user.id,
+      },
+    });
+
+    // Update booking with payment intent ID
+    await this.bookingsService.updatePaymentStatus(booking._id.toString(), 'pending');
+
+    return success({
       clientSecret: paymentIntent.client_secret,
-    };
+      paymentIntentId: paymentIntent.id,
+    }, 'Payment intent created successfully', 201);
   }
 
   @Post('webhook')
   @ApiOperation({ summary: 'Handle Stripe webhook events' })
-  async handleWebhook(
-    @Req() request: RawBodyRequest<Request>,
-    @Headers('stripe-signature') signature: string,
-  ) {
-    if (!request.rawBody) {
-      throw new Error('No raw body available');
-    }
-
-    const event = await this.stripeService.constructEventFromWebhook(
-      request.rawBody,
-      signature,
-    );
-
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Webhook processed successfully'
+  })
+  async handleWebhook(@Body() event: any) {
     switch (event.type) {
       case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        // Update booking status and send confirmation email
-        if (paymentIntent.metadata?.bookingId) {
-          const booking = await this.bookingsService.findOne(
-            paymentIntent.metadata.userId,
+        const paymentIntent = event.data.object;
+        const booking = await this.bookingsService.findById(paymentIntent.metadata.bookingId);
+        
+        if (booking) {
+          await this.bookingsService.updatePaymentStatus(
             paymentIntent.metadata.bookingId,
+            'completed'
           );
           
-          await this.bookingsService.updateStatus(
-            paymentIntent.metadata.bookingId,
-            'confirmed',
-          );
-
           await this.mailService.sendBookingConfirmation(
             booking.user,
             booking,
@@ -73,21 +72,18 @@ export class PaymentsController {
         break;
 
       case 'payment_intent.payment_failed':
-        const failedPayment = event.data.object as Stripe.PaymentIntent;
-        if (failedPayment.metadata?.bookingId) {
-          await this.bookingsService.updateStatus(
+        const failedPayment = event.data.object;
+        const failedBooking = await this.bookingsService.findById(failedPayment.metadata.bookingId);
+        
+        if (failedBooking) {
+          await this.bookingsService.updatePaymentStatus(
             failedPayment.metadata.bookingId,
-            'payment_failed',
+            'failed'
           );
-
-          const booking = await this.bookingsService.findOne(
-            failedPayment.metadata.userId,
-            failedPayment.metadata.bookingId,
-          );
-
+          
           await this.mailService.sendPaymentFailedNotification(
-            booking.user,
-            booking,
+            failedBooking.user,
+            failedBooking,
           );
         }
         break;

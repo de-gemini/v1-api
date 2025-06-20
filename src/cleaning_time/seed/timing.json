@@ -1,0 +1,163 @@
+[
+    {
+      "name": "bedroom",
+      "cleaningTime": 25,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "living/dining room",
+      "cleaningTime": 30,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "bathroom",
+      "cleaningTime": 45,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "hall",
+      "cleaningTime": 10,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "staircase",
+      "cleaningTime": 15,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "toilet",
+      "cleaningTime": 15,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "kitchen",
+      "cleaningTime": 45,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "office room",
+      "cleaningTime": 20,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "conservatory",
+      "cleaningTime": 25,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "garage",
+      "cleaningTime": 30,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "fridge (inside)",
+      "cleaningTime": 30,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "windows (inside)",
+      "cleaningTime": 20,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "ironing",
+      "cleaningTime": 60,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "microwave (inside)",
+      "cleaningTime": 10,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "kitchen (inside)",
+      "cleaningTime": 60,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "bed making",
+      "cleaningTime": 10,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "bookcase",
+      "cleaningTime": 25,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "oven",
+      "cleaningTime": 30,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "oven & grill",
+      "cleaningTime": 45,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    },
+    {
+      "name": "outdoor cleaning",
+      "cleaningTime": 30,
+      "deletedAt": null,
+      "createdAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "updatedAt": { "$date": "2025-06-18T18:08:17.635Z" },
+      "__v": 0
+    }
+  ]
+  

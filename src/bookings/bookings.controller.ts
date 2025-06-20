@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { PricingService } from './services/pricing.service';
 import { CreateBookingDto, ServiceType, RoomType, DirtLevel } from './dto/create-booking.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { success } from '../common/utils/response.util';
+import { SuccessResponse } from '../common/dto/success-response.dto';
 
 interface TimeSlot {
   time: string;
@@ -12,6 +14,8 @@ interface TimeSlot {
 
 @ApiTags('Bookings')
 @Controller('bookings')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
@@ -49,11 +53,52 @@ export class BookingsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new booking' })
-  async createBooking(@Req() req: any, @Body() createBookingDto: CreateBookingDto) {
-    return this.bookingsService.create(req.user.id, createBookingDto);
+  @ApiResponse({ status: 201, type: SuccessResponse })
+  async create(@Body() createBookingDto: CreateBookingDto, @Req() req: any) {
+    const created = await this.bookingsService.createBooking(req.user.id, createBookingDto);
+    return success(created, 'Booking created successfully', 201);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all bookings for the authenticated user' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  async findAll(@Req() req: any) {
+    const bookings = await this.bookingsService.findAll(req.user.id);
+    return success(bookings, 'Bookings fetched successfully');
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific booking by ID' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    const booking = await this.bookingsService.findOneByUser(req.user.id, id);
+    return success(booking, 'Booking fetched successfully');
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update booking status' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Booking status updated successfully'
+  })
+  updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string },
+    @Req() req: any,
+  ) {
+    return this.bookingsService.updateStatus(id, body.status);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a booking' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Booking deleted successfully'
+  })
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.bookingsService.delete(req.user.id, id);
   }
 
   @Get('availability')

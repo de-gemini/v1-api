@@ -16,11 +16,9 @@ export enum RoomType {
 }
 
 export enum ServiceType {
-  REGULAR = 'regular',
+  REGULAR_ONEOFF = 'regular_oneoff',
   END_OF_TENANCY = 'end_of_tenancy',
-  DEEP_CLEANING = 'deep_cleaning',
-  CARPET_CLEANING = 'carpet_cleaning',
-  UPHOLSTERY_CLEANING = 'upholstery_cleaning'
+  CARPET_UPHOLSTERY = 'carpet_upholstery'
 }
 
 export enum DirtLevel {

@@ -1,13 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { User } from '../../users/schemas/user.schema';
+import { Base, BaseDocument } from '../../common/schemas/base.schema';
 
-export type BookingDocument = Booking & Document;
+export type BookingDocument = Booking & BaseDocument;
 
 @Schema({ timestamps: true })
-export class Booking {
-  _id: string;
-
+export class Booking extends Base {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   user: User;
 

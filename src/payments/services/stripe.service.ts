@@ -1,17 +1,14 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 
 @Injectable()
-export class StripeService implements OnModuleInit {
+export class StripeService {
   private stripe: Stripe;
 
-  constructor(private configService: ConfigService) {}
-
-  onModuleInit() {
-    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+  constructor() {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
-      throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+      throw new Error('STRIPE_SECRET_KEY environment variable is required');
     }
     
     this.stripe = new Stripe(stripeKey, {
@@ -19,13 +16,20 @@ export class StripeService implements OnModuleInit {
     });
   }
 
-  async createPaymentIntent(amount: number, currency: string = 'gbp'): Promise<Stripe.PaymentIntent> {
-    return this.stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents/pence
-      currency,
-      payment_method_types: ['card'],
-      capture_method: 'manual', // Only authorize initially, capture after service completion
+  async createPaymentIntent(params: {
+    amount: number;
+    currency: string;
+    metadata?: Record<string, string>;
+  }) {
+    return await this.stripe.paymentIntents.create({
+      amount: Math.round(params.amount * 100), // Convert to cents
+      currency: params.currency,
+      metadata: params.metadata,
     });
+  }
+
+  async retrievePaymentIntent(paymentIntentId: string) {
+    return await this.stripe.paymentIntents.retrieve(paymentIntentId);
   }
 
   async capturePayment(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
@@ -61,7 +65,7 @@ export class StripeService implements OnModuleInit {
     payload: string | Buffer,
     signature: string,
   ): Promise<Stripe.Event> {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!webhookSecret) {
       throw new Error('STRIPE_WEBHOOK_SECRET is not defined in environment variables');
     }

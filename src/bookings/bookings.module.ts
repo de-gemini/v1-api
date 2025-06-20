@@ -6,6 +6,7 @@ import { PricingService } from './services/pricing.service';
 import { Booking, BookingSchema } from './schemas/booking.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { MailModule } from '../mail/mail.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { MailModule } from '../mail/mail.module';
       { name: User.name, schema: UserSchema },
     ]),
     MailModule,
+    UsersModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, PricingService],

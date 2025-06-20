@@ -4,15 +4,13 @@ import { RoomType, DirtLevel, ServiceType } from '../dto/create-booking.dto';
 @Injectable()
 export class PricingService {
   private readonly baseRates = {
-    [ServiceType.REGULAR]: 20,
+    [ServiceType.REGULAR_ONEOFF]: 20,
     [ServiceType.END_OF_TENANCY]: 25,
-    [ServiceType.DEEP_CLEANING]: 30,
-    [ServiceType.CARPET_CLEANING]: 35,
-    [ServiceType.UPHOLSTERY_CLEANING]: 40,
-  };
+    [ServiceType.CARPET_UPHOLSTERY]: 30,
+    };
 
   private readonly roomTimeEstimates = {
-    [RoomType.BEDROOM]: 30, // minutes
+    [RoomType.BEDROOM]: 30, 
     [RoomType.LIVING_ROOM]: 45,
     [RoomType.BATHROOM]: 40,
     [RoomType.KITCHEN]: 60,
@@ -53,6 +51,7 @@ export class PricingService {
     return Math.ceil(baseRate * estimatedHours * priceMultiplier);
   }
 
+  
   getMinimumPrice(serviceType: ServiceType): number {
     // Minimum 3 hours for any service
     return this.baseRates[serviceType] * 3;

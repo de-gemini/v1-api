@@ -11,6 +11,8 @@ import { UsersModule } from './users/users.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { MailModule } from './mail/mail.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CleaningTimeModule } from './cleaning_time/cleaning_time.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { join } from 'path';
 
 @Module({
@@ -64,6 +66,8 @@ import { join } from 'path';
     BookingsModule,
     MailModule,
     PaymentsModule,
+    CleaningTimeModule,
+    CalendarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
