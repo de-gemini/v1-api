@@ -28,6 +28,12 @@ export class User extends Base {
 
   @Prop()
   lastLoginAt: Date;
+
+  @Prop({ required: true })
+  phoneNumber: string;
+
+  @Prop({ required: true })
+  address: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User); 

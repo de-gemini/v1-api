@@ -34,4 +34,18 @@ export class RegisterDto {
   @IsString()
   @MinLength(6)
   confirmPassword?: string;
+
+  @ApiProperty({
+    example: '+447911123456',
+    description: 'User phone number in international format'
+  })
+  @IsString()
+  phoneNumber: string;
+
+  @ApiProperty({
+    example: '123 Main St, London',
+    description: 'User address'
+  })
+  @IsString()
+  address: string;
 } 

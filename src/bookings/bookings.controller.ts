@@ -56,9 +56,11 @@ export class BookingsController {
   @ApiOperation({ summary: 'Create a new booking' })
   @ApiResponse({ status: 201, type: SuccessResponse })
   async create(@Body() createBookingDto: CreateBookingDto, @Req() req: any) {
+    // console.log(req.headers)
     const created = await this.bookingsService.createBooking(req.user.id, createBookingDto);
     return success(created, 'Booking created successfully', 201);
   }
+
 
   @Get()
   @ApiOperation({ summary: 'Get all bookings for the authenticated user' })
@@ -101,50 +103,65 @@ export class BookingsController {
     return this.bookingsService.delete(req.user.id, id);
   }
 
-  @Get('availability')
-  @ApiOperation({ summary: 'Check available time slots for a specific date' })
-  async checkAvailability(
-    @Query('date') date: string,
-    @Query('postcode') postcode: string,
+  // @Get('availability')
+  // @ApiOperation({ summary: 'Check available time slots for a specific date' })
+  // async checkAvailability(
+  //   @Query('date') date: string,
+  //   @Query('postcode') postcode: string,
+  // ) {
+  //   const availableSlots: TimeSlot[] = [];
+  //   const startHour = 8;
+  //   const endHour = 18;
+
+  //   for (let hour = startHour; hour <= endHour; hour++) {
+  //     availableSlots.push({
+  //       time: `${hour}:00`,
+  //       available: true,
+  //     });
+  //   }
+
+  //   return {
+  //     date,
+  //     postcode,
+  //     availableSlots,
+  //   };
+  // }
+
+  // @Get('service-types')
+  // @ApiOperation({ summary: 'Get all available service types and their base rates' })
+  // getServiceTypes() {
+  //   return {
+  //     services: Object.values(ServiceType).map(type => ({
+  //       type,
+  //       baseRate: this.pricingService.getMinimumPrice(type) / 3, // Per hour rate
+  //       minimumHours: 3,
+  //     })),
+  //   };
+  // }
+
+  // @Get('room-types')
+  // @ApiOperation({ summary: 'Get all available room types and their time estimates' })
+  // getRoomTypes() {
+  //   return {
+  //     rooms: Object.values(RoomType).map(type => ({
+  //       type,
+  //       estimatedMinutes: 30, // This would come from pricing service in real app
+  //     })),
+  //   };
+  // }
+
+  @Get('/admin/schedules')
+  @ApiOperation({ summary: 'Get all booking schedules (admin, filterable by month)' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  async getAllSchedules(
+    @Query('year') year?: string,
+    @Query('month') month?: string
   ) {
-    const availableSlots: TimeSlot[] = [];
-    const startHour = 8;
-    const endHour = 18;
-
-    for (let hour = startHour; hour <= endHour; hour++) {
-      availableSlots.push({
-        time: `${hour}:00`,
-        available: true,
-      });
+    if ((year && !month) || (!year && month)) {
+      return { statusCode: 400, message: 'Both year and month are required for filtering.' };
     }
-
-    return {
-      date,
-      postcode,
-      availableSlots,
-    };
-  }
-
-  @Get('service-types')
-  @ApiOperation({ summary: 'Get all available service types and their base rates' })
-  getServiceTypes() {
-    return {
-      services: Object.values(ServiceType).map(type => ({
-        type,
-        baseRate: this.pricingService.getMinimumPrice(type) / 3, // Per hour rate
-        minimumHours: 3,
-      })),
-    };
-  }
-
-  @Get('room-types')
-  @ApiOperation({ summary: 'Get all available room types and their time estimates' })
-  getRoomTypes() {
-    return {
-      rooms: Object.values(RoomType).map(type => ({
-        type,
-        estimatedMinutes: 30, // This would come from pricing service in real app
-      })),
-    };
+    const filter = year && month ? { year, month } : undefined;
+    const schedules = await this.bookingsService.getAllSchedulesWithDetails(filter);
+    return success(schedules, 'All schedules fetched successfully');
   }
 } 
