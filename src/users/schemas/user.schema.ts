@@ -29,10 +29,10 @@ export class User extends Base {
   @Prop()
   lastLoginAt: Date;
 
-  @Prop({ required: true })
+  @Prop()
   phoneNumber: string;
 
-  @Prop({ required: true })
+  @Prop()
   address: string;
 }
 

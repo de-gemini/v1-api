@@ -11,6 +11,15 @@ export enum ScheduleFrequency {
   MONTHLY = 'monthly',
 }
 
+
+export enum ScheduleStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+
 @Schema({ timestamps: true })
 export class Schedule {
   // @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Booking', required: true })
@@ -21,6 +30,9 @@ export class Schedule {
 
   @Prop({ type: String, enum: ScheduleFrequency, required: true })
   frequency: ScheduleFrequency;
+  
+  @Prop({ type: String, enum: ScheduleStatus, required: true, default:ScheduleStatus.PENDING })
+  status: ScheduleStatus;
 
   @Prop({ type: Date, required: true })
   startDate: Date;
