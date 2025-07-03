@@ -67,7 +67,15 @@ import { PostcodeController } from './common/postcode.controller';
     UsersModule,
     BookingsModule,
     MailModule,
-    PaymentsModule,
+    PaymentsModule.forRootAsync({
+      imports: [ConfigModule, BookingsModule, MailModule],
+      useFactory: (configService: ConfigService) => ({
+        apiKey: configService.get<string>('STRIPE_SECRET_KEY', ''),
+        webhookSecret: configService.get<string>('STRIPE_WEBHOOK_SECRET', ''),
+        apiVersion: '2025-05-28.basil',
+      }),
+      inject: [ConfigService],
+    }),
     CleaningTimeModule,
     CalendarModule,
   ],

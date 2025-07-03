@@ -1,30 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import Stripe from 'stripe';
+import { STRIPE_CONFIG, StripeConfig } from '../stripe.config';
+import { BookingsService } from '../../bookings/bookings.service';
+import { MailService } from '../../mail/mail.service';
 
 @Injectable()
 export class StripeService {
   private stripe: Stripe;
+  private webhookSecret?: string;
+  private readonly logger = new Logger(StripeService.name);
 
-  constructor() {
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is required');
+  constructor(
+    @Inject(STRIPE_CONFIG) config: StripeConfig,
+    @Inject(forwardRef(() => BookingsService)) private readonly bookingsService: BookingsService,
+    @Inject(forwardRef(() => MailService)) private readonly mailService: MailService,
+  ) {
+    if (!config.apiKey) {
+      throw new Error('Stripe API key is required');
     }
-    
-    this.stripe = new Stripe(stripeKey, {
-      apiVersion: '2025-05-28.basil',
+    this.stripe = new Stripe(config.apiKey, {
+      apiVersion: (config.apiVersion as '2025-05-28.basil') || '2025-05-28.basil',
     });
+    this.webhookSecret = config.webhookSecret;
   }
 
   async createPaymentIntent(params: {
     amount: number;
     currency: string;
     metadata?: Record<string, string>;
+    description?: string;
   }) {
     return await this.stripe.paymentIntents.create({
       amount: Math.round(params.amount * 100), // Convert to cents
       currency: params.currency,
       metadata: params.metadata,
+      description: params.description,
     });
   }
 
@@ -61,15 +71,50 @@ export class StripeService {
     return this.stripe.refunds.create(refundParams);
   }
 
-  
   async constructEventFromWebhook(
     payload: string | Buffer,
     signature: string,
   ): Promise<Stripe.Event> {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      throw new Error('STRIPE_WEBHOOK_SECRET is not defined in environment variables');
+    if (!this.webhookSecret) {
+      throw new Error('Stripe webhook secret is not configured');
     }
-    return this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    return this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
+  }
+
+  async handleWebhookEvent(event: Stripe.Event) {
+    switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const bookingId = paymentIntent.metadata?.bookingId;
+        const userId = paymentIntent.metadata?.userId;
+        if (!bookingId) {
+          this.logger.error('No bookingId in paymentIntent metadata');
+          return;
+        }
+        this.logger.log(`Payment succeeded for bookingId: ${bookingId}, userId: ${userId}`);
+        const booking = await this.bookingsService.findById(bookingId);
+        if (booking) {
+          await this.bookingsService.updatePaymentStatus(bookingId, 'completed');
+          // await this.mailService.sendBookingConfirmation(booking.user, booking);
+        }
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        const failedPayment = event.data.object as Stripe.PaymentIntent;
+        const bookingId = failedPayment.metadata?.bookingId;
+        const userId = failedPayment.metadata?.userId;
+        if (!bookingId) {
+          this.logger.error('No bookingId in paymentIntent metadata');
+          return;
+        }
+        this.logger.log(`Payment failed for bookingId: ${bookingId}, userId: ${userId}`);
+        const failedBooking = await this.bookingsService.findById(bookingId);
+        if (failedBooking) {
+          await this.bookingsService.updatePaymentStatus(bookingId, 'failed');
+          // await this.mailService.sendPaymentFailedNotification(failedBooking.user, failedBooking);
+        }
+        break;
+      }
+    }
   }
 } 

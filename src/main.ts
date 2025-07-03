@@ -2,12 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['log', 'error', 'warn', 'debug', 'verbose'],
   });
   
+
+
+  // Enable raw body for Stripe webhook
+  app.use('/payments/webhook', bodyParser.raw({ type: 'application/json' }));
+
   // Request logging middleware
   app.use((req, res, next) => {
     const logger = new Logger('HTTP');
@@ -30,6 +36,9 @@ async function bootstrap() {
     whitelist: true,
     transform: true,
   }));
+
+  // Enable raw body for Stripe webhook
+  app.use('/payments/webhook', bodyParser.raw({ type: 'application/json' }));
 
   // Swagger Configuration
   const config = new DocumentBuilder()

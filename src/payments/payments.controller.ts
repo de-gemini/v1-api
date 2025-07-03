@@ -1,26 +1,56 @@
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, Req, Res, Logger } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { StripeService } from './services/stripe.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { MailService } from '../mail/mail.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { success } from '../common/utils/response.util';
 import { SuccessResponse } from '../common/dto/success-response.dto';
+import { Request, Response } from 'express';
 
 @ApiTags('Payments')
 @Controller('payments')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+
 export class PaymentsController {
+  private readonly logger = new Logger(PaymentsController.name);
   constructor(
     private readonly stripeService: StripeService,
     private readonly bookingsService: BookingsService,
     private readonly mailService: MailService,
   ) {}
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @Post('create-payment-intent')
   @ApiOperation({ summary: 'Create a payment intent for a booking' })
-  @ApiResponse({ status: 201, type: SuccessResponse })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        bookingId: { type: 'string', example: 'booking_id_here' },
+      },
+      required: ['bookingId'],
+    },
+    description: 'The ID of the booking for which to create a payment intent.'
+  })
+  @ApiOkResponse({
+    description: 'Payment intent created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Payment intent created successfully' },
+        statusCode: { type: 'number', example: 201 },
+        data: {
+          type: 'object',
+          properties: {
+            clientSecret: { type: 'string', example: 'pi_12345_secret_67890' },
+            paymentIntentId: { type: 'string', example: 'pi_12345' },
+          },
+        },
+      },
+    },
+  })
   async createPaymentIntent(@Body() body: { bookingId: string }, @Req() req: any) {
     const booking = await this.bookingsService.findOneByUser(req.user.id, body.bookingId);
     
@@ -33,8 +63,9 @@ export class PaymentsController {
       currency: 'gbp',
       metadata: {
         bookingId: booking._id.toString(),
-        userId: req.user.id,
+        userId: req.user.id.toString(),
       },
+      description: `Cleaning: ${booking.serviceType} on ${booking.scheduledDate} for £${booking.estimatedPrice}`
     });
 
     // Update booking with payment intent ID
@@ -52,43 +83,27 @@ export class PaymentsController {
     status: 200, 
     description: 'Webhook processed successfully'
   })
-  async handleWebhook(@Body() event: any) {
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object;
-        const booking = await this.bookingsService.findById(paymentIntent.metadata.bookingId);
-        
-        if (booking) {
-          await this.bookingsService.updatePaymentStatus(
-            paymentIntent.metadata.bookingId,
-            'completed'
-          );
-          
-          await this.mailService.sendBookingConfirmation(
-            booking.user,
-            booking,
-          );
-        }
-        break;
-
-      case 'payment_intent.payment_failed':
-        const failedPayment = event.data.object;
-        const failedBooking = await this.bookingsService.findById(failedPayment.metadata.bookingId);
-        
-        if (failedBooking) {
-          await this.bookingsService.updatePaymentStatus(
-            failedPayment.metadata.bookingId,
-            'failed'
-          );
-          
-          await this.mailService.sendPaymentFailedNotification(
-            failedBooking.user,
-            failedBooking,
-          );
-        }
-        break;
+  async handleWebhook(@Req() req: Request, @Res() res: Response) {
+    this.logger.debug('Received Stripe webhook');
+    this.logger.debug('Headers: ' + JSON.stringify(req.headers));
+    this.logger.debug('Body: ' + (typeof req.body === 'string' ? req.body : '[Buffer]'));
+    const sig = req.headers['stripe-signature'] as string;
+    let event;
+    try {
+      event = await this.stripeService.constructEventFromWebhook(
+        req.body, // raw body
+        sig,
+      );
+    } catch (err) {
+      this.logger.error('Webhook signature verification failed:', err);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-
-    return { received: true };
+    try {
+      await this.stripeService.handleWebhookEvent(event);
+    } catch (err) {
+      this.logger.error('Error handling webhook event:', err);
+      return res.status(500).send('Internal Server Error');
+    }
+    return res.json({ received: true });
   }
 } 
