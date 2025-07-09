@@ -9,4 +9,14 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  @Get('health')
+  getHealth(): { status: string; uptime: number; timestamp: string } {
+    return this.appService.getHealth();
+  }
+
+  @Get('startup-info')
+  getStartupInfo(): { startupTime: number; uptime: number } {
+    return this.appService.getStartupInfo();
+  }
 }
