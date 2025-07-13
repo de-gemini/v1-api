@@ -43,6 +43,26 @@ export class RoomDetails {
   estimatedTime: number;
 }
 
+export class AddOnDetails {
+  @ApiProperty()
+  @IsString()
+  key: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @Min(0)
+  quantity: number;
+
+  @ApiProperty()
+  @IsNumber()
+  estimatedTime: number;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+}
+
 export class CreateBookingDto {
   @ApiProperty({ enum: ServiceType, example: ServiceType.REGULAR_ONEOFF })
   @IsEnum(ServiceType)
@@ -53,6 +73,13 @@ export class CreateBookingDto {
   @ValidateNested({ each: true })
   @Type(() => RoomDetails)
   rooms: RoomDetails[];
+
+  @ApiPropertyOptional({ type: [AddOnDetails], example: [{ key: 'deep_cleaning', quantity: 1, estimatedTime: 30, price: 15 }] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AddOnDetails)
+  @IsOptional()
+  addOns?: AddOnDetails[];
 
   @ApiProperty({ example: '123 Main St, London' })
   @IsString()
@@ -103,12 +130,42 @@ export class CreateBookingDto {
   @ApiPropertyOptional({ default: false, example: false })
   @IsBoolean()
   @IsOptional()
+  endOfTenancy?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
   expressStudio?: boolean;
 
   @ApiPropertyOptional({ default: false, example: false })
   @IsBoolean()
   @IsOptional()
   ecofriendlyProduct?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
+  hooverMop?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
+  disinfection?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
+  outdoorCleaning?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
+  laundry?: boolean;
+
+  @ApiPropertyOptional({ default: false, example: false })
+  @IsBoolean()
+  @IsOptional()
+  checkJob?: boolean;
 
   @ApiPropertyOptional({ example: 2 })
   @IsNumber()

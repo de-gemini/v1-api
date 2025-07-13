@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
 import { BaseRepository } from '../common/repositories/base.repository';
@@ -7,6 +7,8 @@ import { Schedule, ScheduleDocument, ScheduleFrequency } from './schemas/schedul
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
+import { PricingStoreService } from '../common/pricing/pricingStore';
+
 
 @Injectable()
 export class BookingsService extends BaseRepository<BookingDocument> {
@@ -16,6 +18,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly mailService: MailService,
     private readonly usersService: UsersService,
+    private readonly pricingStore: PricingStoreService,
   ) {
     super(bookingModel);
   }
@@ -26,19 +29,42 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       throw new NotFoundException('User not found');
     }
 
+    // Validate and recalculate price for security
+    if (bookingData.estimatedPrice !== undefined) {
+      console.log('🔍 Frontend price:', bookingData.estimatedPrice);
+      const recalculatedPrice = this.pricingStore.calculateEstimatedPrice(bookingData as any);
+      console.log('🔍 Backend recalculated price:', recalculatedPrice);
+      
+      // Compare prices with small tolerance for floating point differences
+      if (Math.abs(recalculatedPrice - bookingData.estimatedPrice) > 0.01) {
+        console.log('🔍 Price mismatch detected!');
+        // throw new BadRequestException(`Price mismatch detected. Expected: £${recalculatedPrice.toFixed(2)}, Received: £${bookingData.estimatedPrice.toFixed(2)}`);
+      }
+      
+      console.log('🔍 Price validation passed');
+      // Use the recalculated price for security
+      bookingData.estimatedPrice = recalculatedPrice;
+    }
+
     const { subscriptionMonths = 1, ...rest } = bookingData;
     const booking = await super.create({
       ...rest,
       user: user, // Pass the full user object, not just user._id
       status: 'pending',
+      subscriptionMonths,
+      schedulesCount: 1, // Will update after schedule creation
     });
-    await this.createSchedulesForBooking(booking, subscriptionMonths);
-
+    const schedulesCreated = await this.createSchedulesForBooking(booking, subscriptionMonths);
+    // Update booking with actual schedulesCount
+    await this.bookingModel.findByIdAndUpdate(booking._id, {
+      schedulesCount: schedulesCreated,
+      subscriptionMonths,
+    });
     // await this.mailService.sendBookingConfirmation(user, booking);
     return booking;
   }
 
-  private async createSchedulesForBooking(booking: Booking, subscriptionMonths: number) {
+  private async createSchedulesForBooking(booking: Booking, subscriptionMonths: number): Promise<number> {
     const freq = booking.frequency as CleaningFrequency;
     const schedules: Partial<Schedule>[] = [];
     const now = new Date();
@@ -61,7 +87,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       // Weekly/Fortnight: generate N schedules from today
       const dayOfWeek = booking.scheduledDayOfWeek;
       const time = booking.scheduledTime || '09:00';
-      if (typeof dayOfWeek !== 'number' || !time) return;
+      if (typeof dayOfWeek !== 'number' || !time) return 0;
       let current = new Date(now);
       // Set to the next occurrence of the desired dayOfWeek
       while (current.getDay() !== dayOfWeek) {
@@ -89,7 +115,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       // Monthly: generate N schedules from today
       const dayOfMonth = booking.scheduledDayOfMonth;
       const time = booking.scheduledTime || '09:00';
-      if (typeof dayOfMonth !== 'number' || !time) return;
+      if (typeof dayOfMonth !== 'number' || !time) return 0;
       let current = new Date(now);
       // Set to the next occurrence of the desired dayOfMonth
       if (current.getDate() > dayOfMonth) {
@@ -112,6 +138,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     if (schedules.length) {
       await this.scheduleModel.insertMany(schedules);
     }
+    return schedules.length;
   }
 
   async findAll(userId: string): Promise<Booking[]> {

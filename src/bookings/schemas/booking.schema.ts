@@ -93,6 +93,12 @@ export class Booking extends Base {
   @Prop({ type: String, default: null })
   whereToPickKey: string | null;
 
+  @Prop({ default: 1 })
+  subscriptionMonths: number;
+
+  @Prop({ default: 1 })
+  schedulesCount: number;
+
   @Prop({
     type: [
       {

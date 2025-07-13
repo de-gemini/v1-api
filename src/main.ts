@@ -68,6 +68,7 @@ async function bootstrap() {
     logger.log(`✅ Swagger setup completed in ${Date.now() - swaggerStartTime}ms`);
 
     const PORT = process.env.PORT ?? 3000;
+    
     logger.log(`🌐 Starting server on port ${PORT}...`);
     
     const listenStartTime = Date.now();
