@@ -118,6 +118,12 @@ export class Booking extends Base {
     quantity: number;
     estimatedTime: number;
   }[];
+
+  @Prop({ required: false })
+  serverPrice?: number;
+
+  @Prop({ required: false })
+  clientPrice?: number;
 }
 
 export const BookingSchema = SchemaFactory.createForClass(Booking); 

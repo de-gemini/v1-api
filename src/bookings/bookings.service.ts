@@ -30,20 +30,18 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     }
 
     // Validate and recalculate price for security
+    let serverPrice: number | undefined = undefined;
+    let clientPrice: number | undefined = undefined;
     if (bookingData.estimatedPrice !== undefined) {
-      console.log('🔍 Frontend price:', bookingData.estimatedPrice);
+      clientPrice = bookingData.estimatedPrice;
       const recalculatedPrice = this.pricingStore.calculateEstimatedPrice(bookingData as any);
-      console.log('🔍 Backend recalculated price:', recalculatedPrice);
-      
+      serverPrice = recalculatedPrice;
       // Compare prices with small tolerance for floating point differences
-      if (Math.abs(recalculatedPrice - bookingData.estimatedPrice) > 0.01) {
-        console.log('🔍 Price mismatch detected!');
-        // throw new BadRequestException(`Price mismatch detected. Expected: £${recalculatedPrice.toFixed(2)}, Received: £${bookingData.estimatedPrice.toFixed(2)}`);
+      if (Math.abs(serverPrice - clientPrice) > 0.01) {
+        // Optionally log or handle price mismatch here
       }
-      
-      console.log('🔍 Price validation passed');
       // Use the recalculated price for security
-      bookingData.estimatedPrice = recalculatedPrice;
+      bookingData.estimatedPrice = serverPrice;
     }
 
     const { subscriptionMonths = 1, ...rest } = bookingData;
@@ -53,6 +51,8 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       status: 'pending',
       subscriptionMonths,
       schedulesCount: 1, // Will update after schedule creation
+      serverPrice,
+      clientPrice,
     });
     const schedulesCreated = await this.createSchedulesForBooking(booking, subscriptionMonths);
     // Update booking with actual schedulesCount

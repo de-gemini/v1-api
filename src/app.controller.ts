@@ -15,6 +15,7 @@ export class AppController {
     return this.appService.getHealth();
   }
 
+  
   @Get('startup-info')
   getStartupInfo(): { startupTime: number; uptime: number } {
     return this.appService.getStartupInfo();
