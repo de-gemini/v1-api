@@ -136,4 +136,31 @@ export class UsersController {
     const { password, ...result } = user.toObject();
     return result;
   }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update user profile' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        address: { type: 'string' },
+        phoneNumber: { type: 'string' },
+        // ...other fields you want to allow updating
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  async updateUser(
+    @Param('id') id: string,
+    @Body() body: Partial<{ name: string; address: string; phoneNumber: string }>
+  ) {
+    const user = await this.usersService.updateUser(id, body);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const { password, ...result } = user.toObject();
+    return result;
+  }
 } 
