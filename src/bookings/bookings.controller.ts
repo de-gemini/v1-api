@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, Delete, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { PricingService } from './services/pricing.service';

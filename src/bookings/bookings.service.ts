@@ -72,11 +72,19 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     const months = subscriptionMonths > 0 ? subscriptionMonths : 1;
 
     if (freq === CleaningFrequency.ONETIME) {
-      // Onetime: create a single schedule for today at the specified time
+      // Use the scheduledDateTime or scheduledDate from the booking if provided
+      let start: Date;
+      if (booking.scheduledDateTime) {
+        start = new Date(booking.scheduledDateTime);
+      } else if (booking.scheduledDate) {
+        start = new Date(booking.scheduledDate);
+      } else {
+        start = new Date(now);
+        const time = booking.scheduledTime || '09:00';
+        const [hours, minutes] = time.split(':').map(Number);
+        start.setHours(hours, minutes, 0, 0);
+      }
       const time = booking.scheduledTime || '09:00';
-      const [hours, minutes] = time.split(':').map(Number);
-      const start = new Date(now);
-      start.setHours(hours, minutes, 0, 0);
       schedules.push({
         booking: booking._id as any,
         frequency: ScheduleFrequency.ONETIME,

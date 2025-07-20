@@ -15,6 +15,8 @@ import { CleaningTimeModule } from './cleaning_time/cleaning_time.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { join } from 'path';
 import { PostcodeController } from './common/postcode.controller';
+import { StatisticsModule } from './statistics/statistics.module';
+import { VisitorsModule } from './visitors/visitors.module';
 
 @Module({
   imports: [
@@ -131,6 +133,8 @@ import { PostcodeController } from './common/postcode.controller';
     }),
     CleaningTimeModule,
     CalendarModule,
+    StatisticsModule,
+    VisitorsModule,
   ],
   controllers: [AppController, PostcodeController],
   providers: [AppService],

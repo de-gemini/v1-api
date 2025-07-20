@@ -3,6 +3,9 @@ import Stripe from 'stripe';
 import { STRIPE_CONFIG, StripeConfig } from '../stripe.config';
 import { BookingsService } from '../../bookings/bookings.service';
 import { MailService } from '../../mail/mail.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Payment, PaymentDocument } from '../schemas/payment.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class StripeService {
@@ -14,6 +17,7 @@ export class StripeService {
     @Inject(STRIPE_CONFIG) config: StripeConfig,
     @Inject(forwardRef(() => BookingsService)) private readonly bookingsService: BookingsService,
     @Inject(forwardRef(() => MailService)) private readonly mailService: MailService,
+    @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
   ) {
     if (!config.apiKey) {
       throw new Error('Stripe API key is required');
@@ -27,6 +31,7 @@ export class StripeService {
   async createPaymentIntent(params: {
     amount: number;
     currency: string;
+    customer?: string;
     metadata?: Record<string, string>;
     description?: string;
   }) {
@@ -38,6 +43,7 @@ export class StripeService {
     return await this.stripe.paymentIntents.create({
       amount: Math.round(params.amount * 100), // Convert to cents
       currency: params.currency,
+      customer: params.customer,
       metadata,
       description: params.description,
     });
@@ -273,7 +279,29 @@ export class StripeService {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const bookingId = paymentIntent.metadata?.bookingId;
         const userId = paymentIntent.metadata?.userId;
-        console.log(paymentIntent.metadata)
+        const amount = paymentIntent.amount_received / 100;
+        let scheduleId: string | undefined = paymentIntent.metadata?.scheduleId;
+        if (!scheduleId && bookingId) {
+          // Find the related schedule for this booking (for one-time, should be only one)
+          const schedule = await this.bookingsService['scheduleModel'].findOne({ booking: bookingId });
+          if (schedule) scheduleId = String(schedule._id);
+        }
+        this.logger.log(`[Stripe Webhook] payment_intent.succeeded for bookingId: ${bookingId}, userId: ${userId}`);
+        let paymentType = 'one-time';
+        if (paymentIntent.metadata?.offSession === 'true') {
+          paymentType = 'off-session';
+        }
+        if (bookingId && userId) {
+          await this.paymentModel.create({
+            booking: bookingId,
+            user: userId,
+            amount,
+            status: 'succeeded',
+            type: paymentType,
+            paidAt: new Date(),
+            schedule: scheduleId,
+          });
+        }
         this.logger.log(event.data.object)
 
         this.logger.log(`[Stripe Webhook] payment_intent.succeeded for bookingId: ${bookingId}, userId: ${userId}`);
@@ -283,6 +311,16 @@ export class StripeService {
         }
         const booking = await this.bookingsService.findById(bookingId);
         if (booking) {
+          // Update booking with Stripe customer and payment method IDs
+          await this.bookingsService['bookingModel'].findByIdAndUpdate(
+            bookingId,
+            {
+              stripeCustomerId: paymentIntent.customer,
+              stripePaymentMethodId: paymentIntent.payment_method,
+              paymentIntentId: paymentIntent.id,
+            }
+          );
+          this.logger.log(`[Stripe Webhook] Updated booking ${bookingId} with customerId: ${paymentIntent.customer}, paymentMethodId: ${paymentIntent.payment_method}`);
           await this.bookingsService.updatePaymentStatus(bookingId, 'completed');
           this.logger.log(`[Stripe Webhook] Booking ${bookingId} paymentStatus set to completed (one-time payment)`);
           // Update all related schedules for this booking
@@ -331,19 +369,38 @@ export class StripeService {
       }
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        // Try to get bookingId from line item metadata (for subscriptions)
         let bookingId: string | undefined = undefined;
+        let userId: string | undefined = undefined;
+        let scheduleId: string | undefined = undefined;
         if (invoice.lines && invoice.lines.data && invoice.lines.data.length > 0 && invoice.lines.data[0].metadata && invoice.lines.data[0].metadata.bookingId) {
           bookingId = invoice.lines.data[0].metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in line item metadata: ${bookingId}`);
-        } else if (invoice.parent?.subscription_details?.metadata?.bookingId) {
-          bookingId = invoice.parent.subscription_details.metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in parent.subscription_details.metadata: ${bookingId}`);
         } else if (invoice.metadata?.bookingId) {
           bookingId = invoice.metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in invoice.metadata: ${bookingId}`);
-        } else {
-          this.logger.warn('[Stripe Webhook] No bookingId found in invoice metadata for subscription payment');
+        }
+        if (invoice.customer) {
+          // Try to get userId from booking
+          if (bookingId) {
+            const booking = await this.bookingsService.findById(bookingId);
+            userId = booking?.user?._id?.toString();
+          }
+        }
+        // Try to get the schedule that was just updated (if any)
+        if (bookingId) {
+          const now = new Date();
+          const schedule = await this.bookingsService['scheduleModel'].findOne({ booking: bookingId, paymentStatus: 'completed', startDate: { $gte: now } }).sort({ startDate: 1 });
+          if (schedule) scheduleId = String(schedule._id);
+        }
+        const amount = invoice.amount_paid / 100;
+        if (bookingId && userId) {
+          await this.paymentModel.create({
+            booking: bookingId,
+            user: userId,
+            amount,
+            status: 'succeeded',
+            type: 'subscription',
+            paidAt: new Date(),
+            schedule: scheduleId,
+          });
         }
         this.logger.log(`[Stripe Webhook] invoice.payment_succeeded for bookingId: ${bookingId}, invoice: ${invoice.id}`);
         if (bookingId) {
@@ -371,19 +428,11 @@ export class StripeService {
       }
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        // Try to get bookingId from line item metadata (for subscriptions)
         let bookingId: string | undefined = undefined;
         if (invoice.lines && invoice.lines.data && invoice.lines.data.length > 0 && invoice.lines.data[0].metadata && invoice.lines.data[0].metadata.bookingId) {
           bookingId = invoice.lines.data[0].metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in line item metadata: ${bookingId}`);
-        } else if (invoice.parent?.subscription_details?.metadata?.bookingId) {
-          bookingId = invoice.parent.subscription_details.metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in parent.subscription_details.metadata: ${bookingId}`);
         } else if (invoice.metadata?.bookingId) {
           bookingId = invoice.metadata.bookingId;
-          this.logger.log(`[Stripe Webhook] Found bookingId in invoice.metadata: ${bookingId}`);
-        } else {
-          this.logger.warn('[Stripe Webhook] No bookingId found in invoice metadata for subscription payment');
         }
         this.logger.log(`[Stripe Webhook] invoice.payment_failed: invoice ${invoice.id}, customer: ${invoice.customer}, bookingId: ${bookingId}`);
         if (bookingId) {

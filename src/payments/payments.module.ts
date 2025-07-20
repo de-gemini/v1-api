@@ -5,8 +5,18 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { MailModule } from '../mail/mail.module';
 import { STRIPE_CONFIG, StripeConfig } from './stripe.config';
 import { BookingsService } from 'src/bookings/bookings.service';
+import { Payment, PaymentSchema } from './schemas/payment.schema';
+import { MongooseModule } from '@nestjs/mongoose';
 
-@Module({})
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Payment.name, schema: PaymentSchema },
+    ]),
+    BookingsModule,
+    MailModule,
+  ],
+})
 export class PaymentsModule {
   static forRootAsync(options: {
     useFactory: (...args: any[]) => Promise<StripeConfig> | StripeConfig,
@@ -23,7 +33,7 @@ export class PaymentsModule {
       imports: options.imports || [BookingsModule],
       controllers: [PaymentsController],
       providers: [stripeConfigProvider, StripeService],
-      exports: [StripeService],
+      exports: [StripeService, STRIPE_CONFIG],
     };
   }
 } 

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req, Res, Logger, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Res, Logger, Get, Param, Patch, NotFoundException, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { StripeService } from './services/stripe.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -29,8 +29,11 @@ export class PaymentsController {
       type: 'object',
       properties: {
         bookingId: { type: 'string', example: 'booking_id_here' },
+        paymentMethodId: { type: 'string', example: 'pm_12345' },
+        customerEmail: { type: 'string', example: 'customer@example.com' },
+        customerName: { type: 'string', example: 'John Doe' },
       },
-      required: ['bookingId'],
+      required: ['bookingId', 'customerEmail', 'customerName'],
     },
     description: 'The ID of the booking for which to create a payment intent.'
   })
@@ -52,26 +55,34 @@ export class PaymentsController {
       },
     },
   })
-  async createPaymentIntent(@Body() body: { bookingId: string }, @Req() req: any) {
+  async createPaymentIntent(@Body() body: { bookingId: string, paymentMethodId?: string, customerEmail: string, customerName: string }, @Req() req: any) {
     const booking = await this.bookingsService.findOneByUser(req.user.id, body.bookingId);
-    
     if (!booking) {
       throw new Error('Booking not found');
     }
-
+    // Always get or create a Stripe customer for the user
+    const customer = await this.stripeService.getOrCreateCustomer(body.customerEmail, body.customerName);
+    // Create the PaymentIntent associated with the customer
     const paymentIntent = await this.stripeService.createPaymentIntent({
       amount: booking.estimatedPrice,
       currency: 'gbp',
+      customer: customer.id,
       metadata: {
         bookingId: booking._id.toString(),
         userId: req.user.id.toString(),
       },
       description: `Cleaning: ${booking.serviceType} on ${booking.scheduledDate} for £${booking.estimatedPrice}`
     });
-
-    // Update booking with payment intent ID
+    // Update booking with payment intent ID and payment info if available
+    await this.bookingsService['bookingModel'].findByIdAndUpdate(
+      booking._id,
+      {
+        paymentIntentId: paymentIntent.id,
+        stripeCustomerId: customer.id,
+        ...(body.paymentMethodId ? { stripePaymentMethodId: body.paymentMethodId } : {}),
+      }
+    );
     await this.bookingsService.updatePaymentStatus(booking._id.toString(), 'pending');
-
     return success({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
@@ -90,12 +101,13 @@ export class PaymentsController {
         paymentMethodId: { type: 'string', example: 'pm_12345' },
         customerEmail: { type: 'string', example: 'customer@example.com' },
         customerName: { type: 'string', example: 'John Doe' },
+        bookingId: { type: 'string', example: 'booking_id_here' }, // <-- add this
         metadata: { 
           type: 'object', 
           example: { serviceType: 'weekly_cleaning', userId: 'user123' } 
         },
       },
-      required: ['priceId', 'paymentMethodId', 'customerEmail', 'customerName'],
+      required: ['priceId', 'paymentMethodId', 'customerEmail', 'customerName', 'bookingId'],
     },
     description: 'Create a new subscription with the provided details.'
   })
@@ -124,6 +136,7 @@ export class PaymentsController {
       paymentMethodId: string;
       customerEmail: string;
       customerName: string;
+      bookingId: string;
       metadata?: Record<string, string>;
     },
     @Req() req: any
@@ -133,7 +146,6 @@ export class PaymentsController {
       body.customerEmail,
       body.customerName
     );
-
     // Create subscription with expand
     const subscription = await this.stripeService['stripe'].subscriptions.create({
       customer: customer.id,
@@ -146,7 +158,6 @@ export class PaymentsController {
         userId: req.user.id.toString(),
       },
     });
-
     // Extract client secret from the latest invoice's payment intent
     let clientSecret = null;
     let paymentIntentId = null;
@@ -160,7 +171,6 @@ export class PaymentsController {
         status = pi.status || status;
       }
     }
-
     // Extract hosted_invoice_url from the latest invoice
     let hostedInvoiceUrl = null;
     if (subscription.latest_invoice && typeof subscription.latest_invoice !== 'string') {
@@ -169,7 +179,16 @@ export class PaymentsController {
         hostedInvoiceUrl = latestInvoice.hosted_invoice_url;
       }
     }
-
+    // Update booking with Stripe info
+    await this.bookingsService['bookingModel'].findByIdAndUpdate(
+      body.bookingId,
+      {
+        stripeCustomerId: customer.id,
+        stripePaymentMethodId: body.paymentMethodId,
+        subscriptionId: subscription.id,
+        isSubscription: true,
+      }
+    );
     return success({
       subscriptionId: subscription.id,
       clientSecret,
@@ -487,6 +506,31 @@ export class PaymentsController {
     };
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('records')
+  @ApiOperation({ summary: 'Get paginated payment records' })
+  async getPaymentRecords(@Query('page') page = 1, @Query('limit') limit = 10) {
+    const skip = (Number(page) - 1) * Number(limit);
+    const [payments, total] = await Promise.all([
+      this.stripeService['paymentModel']
+        .find()
+        .populate('booking')
+        .populate('user', '-password')
+        .sort({ paidAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      this.stripeService['paymentModel'].countDocuments(),
+    ]);
+    return success({
+      payments,
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      totalPages: Math.ceil(total / Number(limit)),
+    }, 'Payment records fetched successfully');
+  }
+
   @Post('webhook')
   @ApiOperation({ summary: 'Handle Stripe webhook events' })
   @ApiResponse({ 
@@ -515,5 +559,69 @@ export class PaymentsController {
       return res.status(500).send('Internal Server Error');
     }
     return res.json({ received: true });
+  }
+
+  @Post('save-payment-method')
+  @ApiOperation({ summary: 'Save Stripe customer and payment method to booking' })
+  async savePaymentMethod(
+    @Body() body: { bookingId: string, stripeCustomerId: string, stripePaymentMethodId: string, confirmedIntent:any }
+  ) {
+    console.log({body})
+    await this.bookingsService['bookingModel'].findByIdAndUpdate(
+      body.bookingId,
+      {
+        stripeCustomerId: body.stripeCustomerId,
+        stripePaymentMethodId: body.stripePaymentMethodId,
+      }
+    );
+    return { success: true };
+  }
+
+  @Patch('extra-charge/:bookingId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin: Charge extra amount off-session' })
+  async extraCharge(
+    @Param('bookingId') bookingId: string,
+    @Body() body: { amount: number, reason?: string, scheduleId?: string }
+  ) {
+    // Debug: Log bookingId received
+    console.log('[Off-Session Charge] Received bookingId from client:', bookingId);
+    // Find the booking
+    const booking = await this.bookingsService.findById(bookingId);
+    // Debug: Log booking fetched
+    console.log('[Off-Session Charge] Booking fetched from DB:', booking);
+    if (!booking || !booking.stripeCustomerId || !booking.stripePaymentMethodId) {
+      throw new NotFoundException('Booking or payment info not found');
+    }
+    try {
+      const paymentIntent = await this.stripeService['stripe'].paymentIntents.create({
+        amount: Math.round(body.amount * 100),
+        currency: 'gbp',
+        customer: booking.stripeCustomerId,
+        payment_method: booking.stripePaymentMethodId,
+        off_session: true,
+        confirm: true,
+        description: body.reason || 'Admin off-session charge',
+        metadata: {
+          bookingId,
+          userId: booking.user?._id?.toString() || '',
+          reason: body.reason || '',
+          admin: 'admin_user_id_or_email',
+          ...(body.scheduleId ? { scheduleId: body.scheduleId } : {}),
+          offSession: 'true',
+        }
+      });
+      return { success: true, paymentIntent };
+    } catch (err: any) {
+      if (err.code === 'authentication_required' && err.payment_intent?.next_action?.use_stripe_sdk?.stripe_js) {
+        return {
+          success: false,
+          paymentLink: err.payment_intent.next_action.use_stripe_sdk.stripe_js,
+          message: 'Off-session charge requires customer action.',
+        };
+      }
+      throw err;
+    }
   }
 } 

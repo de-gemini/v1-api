@@ -99,6 +99,15 @@ export class Booking extends Base {
   @Prop({ default: 1 })
   schedulesCount: number;
 
+  @Prop({ default: false })
+  isSubscription: boolean;
+
+  @Prop()
+  subscriptionId: string;
+
+  @Prop()
+  stripePaymentMethodId: string;
+
   @Prop({
     type: [
       {
