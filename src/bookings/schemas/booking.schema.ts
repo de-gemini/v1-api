@@ -59,6 +59,13 @@ export class Booking extends Base {
   @Prop({ default: 'pending' })
   paymentStatus: string;
 
+  @Prop({ 
+    type: String, 
+    enum: ['card', 'cash', 'pending'],
+    default: 'pending' 
+  })
+  paymentMethod: string;
+
   @Prop()
   actualDuration: number;
 

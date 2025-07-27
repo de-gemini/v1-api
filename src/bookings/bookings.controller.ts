@@ -93,6 +93,21 @@ export class BookingsController {
     return this.bookingsService.updateStatus(id, body.status);
   }
 
+  @Patch(':id/payment-method')
+  @ApiOperation({ summary: 'Update booking payment method' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Payment method updated successfully'
+  })
+  async updatePaymentMethod(
+    @Param('id') id: string,
+    @Body() body: { paymentMethod: 'card' | 'cash' },
+    @Req() req: any,
+  ) {
+    const updated = await this.bookingsService.updatePaymentMethod(id, body.paymentMethod, req.user.id);
+    return success(updated, 'Payment method updated successfully');
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a booking' })
   @ApiResponse({ 

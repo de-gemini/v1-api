@@ -29,21 +29,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       throw new NotFoundException('User not found');
     }
 
-    // Validate and recalculate price for security
-    let serverPrice: number | undefined = undefined;
-    let clientPrice: number | undefined = undefined;
-    if (bookingData.estimatedPrice !== undefined) {
-      clientPrice = bookingData.estimatedPrice;
-      const recalculatedPrice = this.pricingStore.calculateEstimatedPrice(bookingData as any);
-      serverPrice = recalculatedPrice;
-      // Compare prices with small tolerance for floating point differences
-      if (Math.abs(serverPrice - clientPrice) > 0.01) {
-        // Optionally log or handle price mismatch here
-      }
-      // Use the recalculated price for security
-      bookingData.estimatedPrice = serverPrice;
-    }
-
+    // Use the frontend price directly without recalculation
     const { subscriptionMonths = 1, ...rest } = bookingData;
     const booking = await super.create({
       ...rest,
@@ -51,8 +37,8 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       status: 'pending',
       subscriptionMonths,
       schedulesCount: 1, // Will update after schedule creation
-      serverPrice,
-      clientPrice,
+      serverPrice: bookingData.estimatedPrice, // Use frontend price as server price
+      clientPrice: bookingData.estimatedPrice, // Use frontend price as client price
     });
     const schedulesCreated = await this.createSchedulesForBooking(booking, subscriptionMonths);
     // Update booking with actual schedulesCount
@@ -259,5 +245,25 @@ export class BookingsService extends BaseRepository<BookingDocument> {
         populate: { path: 'user', select: '-password' }
       })
       .exec();
+  }
+
+  async updatePaymentMethod(bookingId: string, paymentMethod: 'card' | 'cash', userId: string): Promise<Booking> {
+    const booking = await this.bookingModel
+      .findOneAndUpdate(
+        { _id: bookingId, user: userId },
+        { 
+          paymentMethod,
+          ...(paymentMethod === 'cash' && { paymentStatus: 'pending' })
+        },
+        { new: true }
+      )
+      .populate('user', '-password')
+      .exec();
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    return booking;
   }
 } 
