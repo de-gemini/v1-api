@@ -132,6 +132,16 @@ export class ChatController {
     return success(chats, 'Active chats retrieved successfully');
   }
 
+  @Get('admin/unresolved-count')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get count of unresolved chats (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Unresolved chat count retrieved successfully' })
+  async getUnresolvedChatCount() {
+    const count = await this.chatService.getUnresolvedChatCount();
+    return success({ count }, 'Unresolved chat count retrieved successfully');
+  }
+
   @Get('admin/:chatId')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)

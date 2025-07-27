@@ -12,14 +12,40 @@ export class VisitorsService {
   async trackVisit(ip: string, userAgent?: string, sessionId?: string, path?: string) {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
-    const exists = await this.visitorModel.findOne({
+    
+    console.log(`🔍 [trackVisit] Tracking visit:`, {
       ip,
       sessionId,
-      createdAt: { $gte: startOfDay }
+      path,
+      startOfDay: startOfDay.toISOString()
     });
-    if (!exists) {
-      await this.visitorModel.create({ ip, userAgent, sessionId, path });
-    }
+    
+    // Use findOneAndUpdate with upsert to prevent race conditions
+    // This ensures atomic operation - either find existing record or create new one
+    const result = await this.visitorModel.findOneAndUpdate(
+      {
+        ip,
+        sessionId,
+        createdAt: { $gte: startOfDay }
+      },
+      {
+        $setOnInsert: {
+          ip,
+          userAgent,
+          sessionId,
+          path,
+          createdAt: new Date()
+        }
+      },
+      {
+        upsert: true,
+        new: true
+      }
+    );
+    
+    
+    
+    return result;
   }
 
   async getStats() {

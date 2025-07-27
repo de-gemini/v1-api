@@ -47,6 +47,10 @@ export class ChatService {
     return await this.chatModel.find({ isResolved: false }).sort({ lastMessageAt: -1 });
   }
 
+  async getUnresolvedChatCount(): Promise<number> {
+    return await this.chatModel.countDocuments({ isResolved: false });
+  }
+
   async addMessage(chatId: string, message: ChatMessage): Promise<ChatDocument | null> {
     return await this.chatModel.findByIdAndUpdate(
       chatId,
