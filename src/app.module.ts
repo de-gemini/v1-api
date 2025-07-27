@@ -17,6 +17,7 @@ import { join } from 'path';
 import { PostcodeController } from './common/postcode.controller';
 import { StatisticsModule } from './statistics/statistics.module';
 import { VisitorsModule } from './visitors/visitors.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -135,6 +136,7 @@ import { VisitorsModule } from './visitors/visitors.module';
     CalendarModule,
     StatisticsModule,
     VisitorsModule,
+    ChatModule,
   ],
   controllers: [AppController, PostcodeController],
   providers: [AppService],
