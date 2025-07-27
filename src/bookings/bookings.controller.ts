@@ -164,4 +164,19 @@ export class BookingsController {
     const schedules = await this.bookingsService.getAllSchedulesWithDetails(filter);
     return success(schedules, 'All schedules fetched successfully');
   }
+
+  @Patch('admin/schedule/:id/status')
+  @ApiOperation({ summary: 'Admin: Update schedule status' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Schedule status updated successfully'
+  })
+  @ApiResponse({ status: 404, description: 'Schedule not found' })
+  async updateScheduleStatus(
+    @Param('id') id: string,
+    @Body() body: { status: 'pending' | 'confirmed' | 'completed' | 'cancelled' }
+  ) {
+    const updatedSchedule = await this.bookingsService.updateScheduleStatus(id, body.status);
+    return success(updatedSchedule, 'Schedule status updated successfully');
+  }
 } 

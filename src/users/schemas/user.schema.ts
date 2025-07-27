@@ -34,6 +34,15 @@ export class User extends Base {
 
   @Prop()
   address: string;
+
+  @Prop()
+  firstName: string;
+
+  @Prop()
+  lastName: string;
+
+  @Prop()
+  postcode: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User); 

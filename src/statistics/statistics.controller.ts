@@ -59,4 +59,10 @@ export class StatisticsController {
   async getTopServices(@Query('limit') limit = 5) {
     return { services: await this.statisticsService.getTopServices(Number(limit)) };
   }
+
+  @Get('upcoming-bookings')
+  @ApiOperation({ summary: 'Get upcoming bookings' })
+  async getUpcomingBookings(@Query('limit') limit = 10) {
+    return { bookings: await this.statisticsService.getUpcomingBookings(Number(limit)) };
+  }
 } 

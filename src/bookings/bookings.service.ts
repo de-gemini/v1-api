@@ -186,8 +186,24 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       throw new NotFoundException('Booking not found');
     }
 
-    await this.mailService.sendBookingStatusUpdate(booking.user as User, booking);
+    // await this.mailService.sendBookingStatusUpdate(booking.user as User, booking);
     return booking;
+  }
+
+  async updateScheduleStatus(scheduleId: string, status: string): Promise<any> {
+    const schedule = await this.scheduleModel
+      .findByIdAndUpdate(scheduleId, { status }, { new: true })
+      .populate({
+        path: 'booking',
+        populate: { path: 'user', select: '-password' }
+      })
+      .exec();
+
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
+
+    return schedule;
   }
 
   async delete(userId: string, bookingId: string): Promise<void> {

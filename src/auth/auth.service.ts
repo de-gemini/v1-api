@@ -105,6 +105,22 @@ export class AuthService {
     return result;
   }
 
+  async updateProfile(userId: string, profileData: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    address?: string;
+    postcode?: string;
+  }) {
+    const user = await this.usersService.updateUser(userId, profileData);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { password, ...result } = user.toObject();
+    return result;
+  }
+
   async changePassword(userId: string, oldPassword: string, newPassword: string) {
     const user = await this.usersService.findById(userId);
     if (!user) {

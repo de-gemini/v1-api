@@ -2,9 +2,9 @@ import {
   Controller, 
   Post, 
   Body, 
-  Get, 
-  UseGuards, 
-  Req, 
+  Req,
+  Get,
+  UseGuards,
   Patch,
   HttpCode,
   HttpStatus
@@ -77,6 +77,40 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@Req() req: any) {
     return this.authService.getProfile(req.user.id);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user profile' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', example: 'John' },
+        lastName: { type: 'string', example: 'Doe' },
+        phoneNumber: { type: 'string', example: '+1234567890' },
+        address: { type: 'string', example: '123 Main St' },
+        postcode: { type: 'string', example: 'SW1A 1AA' }
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Profile updated successfully'
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async updateProfile(
+    @Req() req: any,
+    @Body() body: { 
+      firstName?: string; 
+      lastName?: string; 
+      phoneNumber?: string; 
+      address?: string; 
+      postcode?: string; 
+    }
+  ) {
+    return this.authService.updateProfile(req.user.id, body);
   }
 
   @Patch('change-password')

@@ -20,11 +20,11 @@ export class StatisticsService {
   }
 
   async getCompletedBookings() {
-    return this.bookingModel.countDocuments({ status: 'completed' });
+    return this.scheduleModel.countDocuments({ status: 'completed' });
   }
 
   async getPendingBookings() {
-    return this.bookingModel.countDocuments({ status: { $in: ['pending', 'confirmed'] } });
+    return this.scheduleModel.countDocuments({ status: { $in: ['pending', 'confirmed'] } });
   }
 
   async getTotalRevenue() {
@@ -41,6 +41,17 @@ export class StatisticsService {
 
   async getRecentBookings(limit = 10) {
     return this.bookingModel.find().sort({ createdAt: -1 }).limit(limit).populate('user', '-password');
+  }
+
+  async getUpcomingBookings(limit = 10) {
+    const now = new Date();
+    return this.bookingModel.find({
+      scheduledDate: { $gte: now },
+      status: { $in: ['pending', 'confirmed'] }
+    })
+    .sort({ scheduledDate: 1 })
+    .limit(limit)
+    .populate('user', '-password');
   }
 
   async getTopCustomers(limit = 5) {
