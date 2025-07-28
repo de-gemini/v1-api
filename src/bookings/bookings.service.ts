@@ -247,6 +247,88 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       .exec();
   }
 
+  async getUserSchedules(userId: string) {
+    return this.scheduleModel
+      .find()
+      .populate({
+        path: 'booking',
+        match: { user: userId },
+        populate: { path: 'user', select: '-password' }
+      })
+      .exec()
+      .then(schedules => schedules.filter(schedule => schedule.booking)); // Only return schedules with valid bookings
+  }
+
+  async getScheduleById(scheduleId: string) {
+    const schedule = await this.scheduleModel
+      .findById(scheduleId)
+      .populate({
+        path: 'booking',
+        populate: { path: 'user', select: '-password' }
+      })
+      .exec();
+
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
+
+    return schedule;
+  }
+
+  // async getUserScheduleStats(userId: string, filter?: { year: string, month: string }) {
+  //   let query = this.scheduleModel.find();
+    
+  //   // Filter by user
+  //   query = query.populate({
+  //     path: 'booking',
+  //     match: { user: userId },
+  //     populate: { path: 'user', select: '-password' }
+  //   });
+
+  //   // Apply date filter if provided
+  //   if (filter && filter.year && filter.month) {
+  //     const year = parseInt(filter.year, 10);
+  //     const month = parseInt(filter.month, 10) - 1; // JS months are 0-based
+  //     const start = Date.UTC(year, month, 1);
+  //     const end = Date.UTC(year, month + 1, 1);
+  //     query = query.where('startDate').gte(start).lt(end);
+  //   }
+
+  //   const schedules = await query.exec();
+  //   const userSchedules = schedules.filter(schedule => schedule.booking);
+
+  //   const stats = {
+  //     total: userSchedules.length,
+  //     pending: userSchedules.filter(s => s.status === 'pending').length,
+  //     confirmed: userSchedules.filter(s => s.status === 'confirmed').length,
+  //     completed: userSchedules.filter(s => s.status === 'completed').length,
+  //     cancelled: userSchedules.filter(s => s.status === 'cancelled').length,
+  //     monthlyBreakdown: []
+  //   };
+
+  //   // Calculate monthly breakdown for the current year
+  //   const currentYear = new Date().getFullYear();
+  //   for (let month = 0; month < 12; month++) {
+  //     const monthStart = Date.UTC(currentYear, month, 1);
+  //     const monthEnd = Date.UTC(currentYear, month + 1, 1);
+  //     const monthSchedules = userSchedules.filter(s => {
+  //       const scheduleDate = new Date(s.startDate);
+  //       return scheduleDate >= monthStart && scheduleDate < monthEnd;
+  //     });
+
+  //     stats.monthlyBreakdown.push({
+  //       month: month + 1,
+  //       total: monthSchedules.length,
+  //       pending: monthSchedules.filter(s => s.status === 'pending').length,
+  //       confirmed: monthSchedules.filter(s => s.status === 'confirmed').length,
+  //       completed: monthSchedules.filter(s => s.status === 'completed').length,
+  //       cancelled: monthSchedules.filter(s => s.status === 'cancelled').length,
+  //     });
+  //   }
+
+  //   return stats;
+  // }
+
   async updatePaymentMethod(bookingId: string, paymentMethod: 'card' | 'cash', userId: string): Promise<Booking> {
     const booking = await this.bookingModel
       .findOneAndUpdate(

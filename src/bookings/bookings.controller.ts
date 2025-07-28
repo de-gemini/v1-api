@@ -70,6 +70,43 @@ export class BookingsController {
     return success(bookings, 'Bookings fetched successfully');
   }
 
+  @Get('schedules')
+  @ApiOperation({ summary: 'Get all schedules for the authenticated user' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  async getUserSchedules(@Req() req: any) {
+    const schedules = await this.bookingsService.getUserSchedules(req.user.id);
+    return success(schedules, 'User schedules fetched successfully');
+  }
+
+  @Get('schedules/:id')
+  @ApiOperation({ summary: 'Get a specific schedule by ID' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  @ApiResponse({ status: 404, description: 'Schedule not found' })
+  async getSchedule(@Param('id') id: string, @Req() req: any) {
+    const schedule = await this.bookingsService.getScheduleById(id);
+    return success(schedule, 'Schedule fetched successfully');
+  }
+
+  @Patch('schedules/:id')
+  @ApiOperation({ summary: 'Update schedule status' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Schedule status updated successfully'
+  })
+
+  // @Get('schedules/stats')
+  // @ApiOperation({ summary: 'Get schedule statistics for the authenticated user' })
+  // @ApiResponse({ status: 200, type: SuccessResponse })
+  // async getScheduleStats(
+  //   @Req() req: any,
+  //   @Query('year') year?: string,
+  //   @Query('month') month?: string
+  // ) {
+  //   const filter = year && month ? { year, month } : undefined;
+  //   const stats = await this.bookingsService.getUserScheduleStats(req.user.id, filter);
+  //   return success(stats, 'Schedule statistics fetched successfully');
+  // }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific booking by ID' })
   @ApiResponse({ status: 200, type: SuccessResponse })
