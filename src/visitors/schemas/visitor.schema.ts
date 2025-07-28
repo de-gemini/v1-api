@@ -18,4 +18,7 @@ export class Visitor {
   path?: string;
 }
 
-export const VisitorSchema = SchemaFactory.createForClass(Visitor); 
+export const VisitorSchema = SchemaFactory.createForClass(Visitor);
+
+// Add index for efficient querying
+VisitorSchema.index({ sessionId: 1, path: 1, createdAt: 1 }); 

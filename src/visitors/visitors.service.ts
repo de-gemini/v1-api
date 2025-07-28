@@ -20,32 +20,36 @@ export class VisitorsService {
       startOfDay: startOfDay.toISOString()
     });
     
-    // Use findOneAndUpdate with upsert to prevent race conditions
-    // This ensures atomic operation - either find existing record or create new one
-    const result = await this.visitorModel.findOneAndUpdate(
-      {
-        ip,
+    try {
+      // First, check if we already have a record for this session and path today
+      const existingRecord = await this.visitorModel.findOne({
         sessionId,
+        path,
         createdAt: { $gte: startOfDay }
-      },
-      {
-        $setOnInsert: {
-          ip,
-          userAgent,
-          sessionId,
-          path,
-          createdAt: new Date()
-        }
-      },
-      {
-        upsert: true,
-        new: true
+      });
+
+      if (existingRecord) {
+        console.log(`📝 [trackVisit] Record already exists for session ${sessionId} and path ${path} today`);
+        return existingRecord;
       }
-    );
-    
-    
-    
-    return result;
+
+      // Create new record if none exists
+      const newRecord = new this.visitorModel({
+        ip,
+        userAgent,
+        sessionId,
+        path,
+        createdAt: new Date()
+      });
+
+      const result = await newRecord.save();
+      console.log(`✅ [trackVisit] Created new visitor record:`, result._id);
+      return result;
+      
+    } catch (error) {
+      console.error(`❌ [trackVisit] Error tracking visit:`, error);
+      throw error;
+    }
   }
 
   async getStats() {
@@ -56,10 +60,10 @@ export class VisitorsService {
     const startOf30Days = new Date(now); startOf30Days.setDate(now.getDate() - 29); startOf30Days.setHours(0,0,0,0);
 
     const [today, yesterday, last7, last30] = await Promise.all([
-      this.visitorModel.distinct('ip', { createdAt: { $gte: startOfToday } }),
-      this.visitorModel.distinct('ip', { createdAt: { $gte: startOfYesterday, $lt: startOfToday } }),
-      this.visitorModel.distinct('ip', { createdAt: { $gte: startOf7Days } }),
-      this.visitorModel.distinct('ip', { createdAt: { $gte: startOf30Days } }),
+      this.visitorModel.distinct('sessionId', { createdAt: { $gte: startOfToday } }),
+      this.visitorModel.distinct('sessionId', { createdAt: { $gte: startOfYesterday, $lt: startOfToday } }),
+      this.visitorModel.distinct('sessionId', { createdAt: { $gte: startOf7Days } }),
+      this.visitorModel.distinct('sessionId', { createdAt: { $gte: startOf30Days } }),
     ]);
     return {
       today: today.length,
