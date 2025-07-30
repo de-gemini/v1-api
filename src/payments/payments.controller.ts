@@ -1,3 +1,23 @@
+/**
+ * ⚠️  CRITICAL PAYMENT CODE - DO NOT EDIT WITHOUT EXPLICIT PERMISSION ⚠️
+ * 
+ * This file contains payment processing logic and webhook handlers that directly
+ * affect financial transactions and customer billing. Any changes to this code
+ * could result in:
+ * - Payment processing failures
+ * - Incorrect billing
+ * - Security vulnerabilities
+ * - Data integrity issues
+ * 
+ * BEFORE MAKING ANY CHANGES:
+ * 1. Inform the user/owner about the proposed changes
+ * 2. Get explicit approval
+ * 3. Test thoroughly in a safe environment
+ * 4. Document all changes made
+ * 
+ * This is a financial system - treat it with extreme caution!
+ */
+
 import { Controller, Post, Body, UseGuards, Req, Res, Logger, Get, Param, Patch, NotFoundException, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiOkResponse } from '@nestjs/swagger';
 import { StripeService } from './services/stripe.service';

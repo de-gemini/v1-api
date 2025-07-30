@@ -18,6 +18,7 @@ import { PostcodeController } from './common/postcode.controller';
 import { StatisticsModule } from './statistics/statistics.module';
 import { VisitorsModule } from './visitors/visitors.module';
 import { ChatModule } from './chat/chat.module';
+import { SystemSettingsModule } from './system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -137,6 +138,7 @@ import { ChatModule } from './chat/chat.module';
     StatisticsModule,
     VisitorsModule,
     ChatModule,
+    SystemSettingsModule,
   ],
   controllers: [AppController, PostcodeController],
   providers: [AppService],

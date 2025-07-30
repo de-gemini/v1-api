@@ -20,7 +20,16 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly pricingService: PricingService,
-  ) {}
+  ) {
+    console.log('🔍 [DEBUG] BookingsController initialized');
+  }
+
+  @Get('test')
+  @ApiOperation({ summary: 'Test endpoint' })
+  test() {
+    console.log('🔍 [DEBUG] Test endpoint called');
+    return { message: 'Bookings controller is working' };
+  }
 
   @Post('calculate-estimate')
   @ApiOperation({ summary: 'Calculate estimated time and price for cleaning' })
@@ -70,7 +79,19 @@ export class BookingsController {
     return success(bookings, 'Bookings fetched successfully');
   }
 
-  @Get('schedules')
+  
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific booking by ID' })
+  @ApiResponse({ status: 200, type: SuccessResponse })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    console.log('🔍 [DEBUG] findOne called with id:', id, 'user:', req.user?.id || 'NO USER');
+    console.log('🔍 [DEBUG] Full request object:', JSON.stringify(req.user, null, 2));
+    const booking = await this.bookingsService.findOneByUser(req.user.id, id);
+    return success(booking, 'Booking fetched successfully');
+  }
+
+  @Get('client-schedules/all')
   @ApiOperation({ summary: 'Get all schedules for the authenticated user' })
   @ApiResponse({ status: 200, type: SuccessResponse })
   async getUserSchedules(@Req() req: any) {
@@ -83,6 +104,7 @@ export class BookingsController {
   @ApiResponse({ status: 200, type: SuccessResponse })
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   async getSchedule(@Param('id') id: string, @Req() req: any) {
+    console.log('🔍 [DEBUG] getSchedule called with id:', id);
     const schedule = await this.bookingsService.getScheduleById(id);
     return success(schedule, 'Schedule fetched successfully');
   }
@@ -107,14 +129,6 @@ export class BookingsController {
   //   return success(stats, 'Schedule statistics fetched successfully');
   // }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a specific booking by ID' })
-  @ApiResponse({ status: 200, type: SuccessResponse })
-  @ApiResponse({ status: 404, description: 'Booking not found' })
-  async findOne(@Param('id') id: string, @Req() req: any) {
-    const booking = await this.bookingsService.findOneByUser(req.user.id, id);
-    return success(booking, 'Booking fetched successfully');
-  }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Update booking status' })
@@ -230,5 +244,20 @@ export class BookingsController {
   ) {
     const updatedSchedule = await this.bookingsService.updateScheduleStatus(id, body.status);
     return success(updatedSchedule, 'Schedule status updated successfully');
+  }
+
+  @Patch('admin/schedule/:id/payment-status')
+  @ApiOperation({ summary: 'Admin: Update schedule payment status' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Schedule payment status updated successfully'
+  })
+  @ApiResponse({ status: 404, description: 'Schedule not found' })
+  async updateSchedulePaymentStatus(
+    @Param('id') id: string,
+    @Body() body: { paymentStatus: 'pending' | 'paid' | 'failed' }
+  ) {
+    const updatedSchedule = await this.bookingsService.updateSchedulePaymentStatus(id, body.paymentStatus);
+    return success(updatedSchedule, 'Schedule payment status updated successfully');
   }
 } 

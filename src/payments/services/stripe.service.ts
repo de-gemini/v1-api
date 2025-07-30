@@ -1,3 +1,28 @@
+/**
+ * ⚠️  CRITICAL PAYMENT SERVICE - DO NOT EDIT WITHOUT EXPLICIT PERMISSION ⚠️
+ * 
+ * This file contains the core Stripe payment processing logic including:
+ * - Payment intent creation and management
+ * - Webhook event handling
+ * - Subscription management
+ * - Payment status updates
+ * 
+ * CRITICAL WARNING:
+ * - This code directly handles financial transactions
+ * - Webhook events update payment statuses in the database
+ * - Any changes could break payment processing
+ * - Security implications for customer data
+ * 
+ * BEFORE MAKING ANY CHANGES:
+ * 1. MUST inform the user/owner about proposed changes
+ * 2. Get explicit written approval
+ * 3. Test in isolated environment
+ * 4. Review security implications
+ * 5. Document all modifications
+ * 
+ * This is production financial code - extreme caution required!
+ */
+
 import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import Stripe from 'stripe';
 import { STRIPE_CONFIG, StripeConfig } from '../stripe.config';

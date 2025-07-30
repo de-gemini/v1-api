@@ -38,13 +38,20 @@ export class Booking extends Base {
   @Prop({ required: true })
   address: string;
 
-  @Prop({ default: 'pending' })
+  @Prop({ default: 'pending', select: false }) // Exclude from queries by default
   status: string;
+
+  @Prop({ default: 'pending', select: false }) // Exclude from queries by default
+  paymentStatus: string;
 
   @Prop()
   notes: string;
 
-  @Prop({ required: true })
+  @Prop({ 
+    required: true,
+    get: (val: number) => val ? Math.round(val * 100) / 100 : val,
+    set: (val: number) => val ? Math.round(val * 100) / 100 : val
+  })
   estimatedPrice: number;
 
   @Prop({ required: true })
@@ -56,9 +63,6 @@ export class Booking extends Base {
   @Prop()
   stripeCustomerId: string;
 
-  @Prop({ default: 'pending' })
-  paymentStatus: string;
-
   @Prop({ 
     type: String, 
     enum: ['card', 'cash', 'pending'],
@@ -69,7 +73,10 @@ export class Booking extends Base {
   @Prop()
   actualDuration: number;
 
-  @Prop()
+  @Prop({ 
+    get: (val: number) => val ? Math.round(val * 100) / 100 : val,
+    set: (val: number) => val ? Math.round(val * 100) / 100 : val
+  })
   actualPrice: number;
 
   @Prop({ type: Date })
@@ -135,11 +142,23 @@ export class Booking extends Base {
     estimatedTime: number;
   }[];
 
-  @Prop({ required: false })
+  @Prop({ 
+    required: false,
+    get: (val: number) => val ? Math.round(val * 100) / 100 : val,
+    set: (val: number) => val ? Math.round(val * 100) / 100 : val
+  })
   serverPrice?: number;
 
-  @Prop({ required: false })
+  @Prop({ 
+    required: false,
+    get: (val: number) => val ? Math.round(val * 100) / 100 : val,
+    set: (val: number) => val ? Math.round(val * 100) / 100 : val
+  })
   clientPrice?: number;
 }
 
-export const BookingSchema = SchemaFactory.createForClass(Booking); 
+export const BookingSchema = SchemaFactory.createForClass(Booking);
+
+// Enable getters so money fields are automatically rounded to 2dp when fetched
+BookingSchema.set('toJSON', { getters: true });
+BookingSchema.set('toObject', { getters: true }); 

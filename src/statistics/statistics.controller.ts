@@ -42,10 +42,16 @@ export class StatisticsController {
     return { total: await this.statisticsService.getNewCustomers(since) };
   }
 
+  @Get('pending-confirmation-bookings')
+  @ApiOperation({ summary: 'Get bookings that are paid but pending admin confirmation' })
+  async getPendingConfirmationBookings(@Query('limit') limit = 10) {
+    return await this.statisticsService.getPendingConfirmationBookings(Number(limit));
+  }
+
   @Get('recent-bookings')
   @ApiOperation({ summary: 'Get recent bookings' })
   async getRecentBookings(@Query('limit') limit = 10) {
-    return { bookings: await this.statisticsService.getRecentBookings(Number(limit)) };
+    return await this.statisticsService.getRecentBookings(Number(limit));
   }
 
   @Get('top-customers')
@@ -63,6 +69,18 @@ export class StatisticsController {
   @Get('upcoming-bookings')
   @ApiOperation({ summary: 'Get upcoming bookings' })
   async getUpcomingBookings(@Query('limit') limit = 10) {
-    return { bookings: await this.statisticsService.getUpcomingBookings(Number(limit)) };
+    return await this.statisticsService.getUpcomingBookings(Number(limit));
+  }
+
+  @Get('daily-visitors')
+  @ApiOperation({ summary: 'Get daily visitor statistics for the last 7 days' })
+  async getDailyVisitors() {
+    return { data: await this.statisticsService.getDailyVisitors() };
+  }
+
+  @Get('debug-payment-statuses')
+  @ApiOperation({ summary: 'Debug: Check payment statuses in database' })
+  async debugPaymentStatuses() {
+    return await this.statisticsService.debugPaymentStatuses();
   }
 } 

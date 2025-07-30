@@ -9,6 +9,7 @@ import { Schedule, ScheduleSchema } from './schemas/schedule.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
+import { SystemSettingsModule } from '../system-settings/system-settings.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from '../users/users.module';
     ]),
     MailModule,
     UsersModule,
+    SystemSettingsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, PricingService, PricingStoreService],

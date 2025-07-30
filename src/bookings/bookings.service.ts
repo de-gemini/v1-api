@@ -8,6 +8,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PricingStoreService } from '../common/pricing/pricingStore';
+import { SystemSettingsService } from '../system-settings/system-settings.service';
 
 
 @Injectable()
@@ -19,11 +20,30 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     private readonly mailService: MailService,
     private readonly usersService: UsersService,
     private readonly pricingStore: PricingStoreService,
+    private readonly systemSettingsService: SystemSettingsService,
   ) {
     super(bookingModel);
   }
 
   async createBooking(userId: string, bookingData: Partial<Booking> & { subscriptionMonths?: number }): Promise<Booking> {
+    // Check if booking prevention is enabled
+    const isBookingPreventionEnabled = await this.systemSettingsService.isBookingPreventionEnabled();
+    if (isBookingPreventionEnabled) {
+      const settings = await this.systemSettingsService.getSettings();
+      const preventionSettings = settings.settings.bookingPrevention;
+      
+      // Check if current date is within prevention period
+      const now = new Date();
+      const startDate = preventionSettings.startDate ? new Date(preventionSettings.startDate) : null;
+      const endDate = preventionSettings.endDate ? new Date(preventionSettings.endDate) : null;
+      
+      if ((!startDate || now >= startDate) && (!endDate || now <= endDate)) {
+        throw new BadRequestException(
+          preventionSettings.reason || 'Booking is currently disabled. Please try again later.'
+        );
+      }
+    }
+
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -143,12 +163,17 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   }
 
   async findOneByUser(userId: string, bookingId: string): Promise<Booking> {
+    console.log('🔍 [DEBUG] findOneByUser called with userId:', userId, 'bookingId:', bookingId);
+    
     const booking = await this.bookingModel
       .findOne({ _id: bookingId, user: userId })
       .populate('user', '-password')
       .exec();
 
+    console.log('🔍 [DEBUG] Booking found:', booking ? 'YES' : 'NO');
+    
     if (!booking) {
+      console.log('🔍 [DEBUG] Throwing NotFoundException');
       throw new NotFoundException('Booking not found');
     }
 
@@ -192,6 +217,22 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     return schedule;
   }
 
+  async updateSchedulePaymentStatus(scheduleId: string, paymentStatus: string): Promise<any> {
+    const schedule = await this.scheduleModel
+      .findByIdAndUpdate(scheduleId, { paymentStatus }, { new: true })
+      .populate({
+        path: 'booking',
+        populate: { path: 'user', select: '-password' }
+      })
+      .exec();
+
+    if (!schedule) {
+      throw new NotFoundException('Schedule not found');
+    }
+
+    return schedule;
+  }
+
   async delete(userId: string, bookingId: string): Promise<void> {
     const booking = await this.bookingModel
       .findOneAndDelete({ _id: bookingId, user: userId })
@@ -203,6 +244,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   }
 
   // Additional methods using the base repository
+  // Note: These methods are for internal use only - booking status is never sent to frontend
   async findByStatus(status: string): Promise<Booking[]> {
     return await this.bookingModel
       .find({ status })
@@ -260,6 +302,8 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   }
 
   async getScheduleById(scheduleId: string) {
+    console.log('🔍 [DEBUG] getScheduleById called with scheduleId:', scheduleId);
+    
     const schedule = await this.scheduleModel
       .findById(scheduleId)
       .populate({
@@ -268,7 +312,10 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       })
       .exec();
 
+    console.log('🔍 [DEBUG] Schedule found:', schedule ? 'YES' : 'NO');
+
     if (!schedule) {
+      console.log('🔍 [DEBUG] Throwing NotFoundException for schedule');
       throw new NotFoundException('Schedule not found');
     }
 
@@ -348,4 +395,6 @@ export class BookingsService extends BaseRepository<BookingDocument> {
 
     return booking;
   }
+
+
 } 
