@@ -7,17 +7,24 @@ export enum DirtLevel {
 
 
 export const PRICING_CONFIG = {
-// Base hourly rates
-baseHourlyRate: 19,
+// Base hourly rates - Updated to Gemini pricing
+baseHourlyRate: 17.99, // Changed from 19 to 17.99
 
 // Minimum hours for booking (easily configurable)
 minimumHours: 1,
 
-// Frequency discounts (as percentages)
+// Minimum prices for each service type - Updated to Gemini pricing
+minimumPrices: {
+  regularCleaning: 50,      // Regular/One-off cleaning minimum - Changed from 87 to 50
+  endOfTenancy: 130,        // End of Tenancy minimum - Changed from 145 to 130
+  carpetUpholstery: 80,     // Carpet & Upholstery minimum - Changed from 96 to 80
+},
+
+// Frequency discounts (as percentages) - Updated to reflect new base rate
 frequencyDiscounts: {
-  weekly: 0.15,      // 15% discount
-  fortnightly: 0.20, // 20% discount  
-  monthly: 0.25,     // 25% discount
+  weekly: 0.111,      // 11.1% discount (17.99 -> 15.99)
+  fortnightly: 0.056, // 5.6% discount (17.99 -> 16.99)  
+  monthly: 0.0,       // 0% discount (17.99 -> 17.99)
 },
 
 // Additional service costs
@@ -38,8 +45,8 @@ additionalServices: {
 // Dirt level multipliers
 dirtLevelMultipliers: {
   light: 1.0,
-  medium: 1.15,
-  heavy: 1.30,
+  medium: 1.25,
+  heavy: 1.8,
 },
 
 
@@ -529,7 +536,7 @@ export interface DayAvailabilityResponse {
 export const frequencyOptions = [
   {
     label: "Weekly",
-    price: 17,
+    price: 15.99, // Changed from 17 to 15.99
     cashback: true,
     features: [
       "Background-checked professionals",
@@ -540,7 +547,7 @@ export const frequencyOptions = [
   },
   {
     label: "Fortnightly",
-    price: 18,
+    price: 16.99, // Changed from 18 to 16.99
     cashback: true,
     best: true,
     features: [
@@ -552,7 +559,7 @@ export const frequencyOptions = [
   },
   {
     label: "Monthly",
-    price: 19,
+    price: 17.99, // Changed from 19 to 17.99
     cashback: true,
     features: [
       "Background-checked professionals",
@@ -563,12 +570,12 @@ export const frequencyOptions = [
   },
   {
     label: "One – Off",
-    price: 19,
+    price: 17.99, // Changed from 19 to 17.99
     oneOffDetails: [
-      { label: "Next day", price: 19, desc: "Any day from tomorrow (8 am - 9 pm)" },
-      { label: "Same day", price: 29, desc: "Today, in 4h minimum (8 am - 9 pm)" },
-      { label: "Peak", price: 20, desc: "High demand" },
-      { label: "Night", price: 29, desc: "Any day (9 pm - 8 am)" },
+      { label: "Next day", price: 17.99, desc: "Any day from tomorrow (8 am - 9 pm)" }, // Changed from 19 to 17.99
+      { label: "Same day", price: 25.99, desc: "Today, in 4h minimum (8 am - 9 pm)" }, // Changed from 29 to 25.99
+      { label: "Peak", price: 18.99, desc: "High demand" }, // Changed from 20 to 18.99
+      { label: "Night", price: 25.99, desc: "Any day (9 pm - 8 am)" }, // Changed from 29 to 25.99
     ],
   },
 ];
@@ -622,7 +629,7 @@ const diffHours = diffMs / (1000 * 60 * 60);
 const isNight = hour >= 20 || hour < 6;
 
 const details = frequencyOptions[3].oneOffDetails;
-const fallback = details?.[0] || { label: 'Standard', price: 19, desc: 'Standard one-off cleaning' };
+const fallback = details?.[0] || { label: 'Standard', price: 17.99, desc: 'Standard one-off cleaning' }; // Updated from 19 to 17.99
 
 // Helper to safely find a detail
 const safeFind = (label: string) => details?.find((d: any) => d.label === label) || fallback;
@@ -633,9 +640,9 @@ if (
   diffHours > 0
 ) {
   if (isNight) {
-    return safeFind("Night Cleaning");
+    return safeFind("Night");
   }
-  return safeFind("Same Day");
+  return safeFind("Same day");
 }
 
 // Next day
@@ -645,14 +652,14 @@ if (
   bookingDate.toDateString() === tomorrow.toDateString()
 ) {
   if (isNight) {
-    return safeFind("Night Cleaning");
+    return safeFind("Night");
   }
-  return safeFind("Next Day");
+  return safeFind("Next day");
 }
 
 // Night cleaning (for any other day)
 if (isNight) {
-  return safeFind("Night Cleaning");
+  return safeFind("Night");
 }
 
 // Peak (weekends)
@@ -662,5 +669,5 @@ if (isWeekend) {
 }
 
 // Default: Standard
-return safeFind("Standard");
+return safeFind("Next day");
 }
