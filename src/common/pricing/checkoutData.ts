@@ -35,6 +35,8 @@ additionalServices: {
   hooverMop: 10,
   disinfection: 20,
   outdoorCleaning: 30, // fixed
+  oven: 20, // fixed
+  ovenGrill: 30, // fixed
   laundry: 9, // fixed service
   errandHours: 25, // per hour
   checkJob: 15,
@@ -102,6 +104,8 @@ ecoFriendly?: boolean;
 hooverMop?: boolean;
 disinfection?: boolean;
 outdoorCleaning?: boolean;
+oven?: boolean;
+ovenGrill?: boolean;
 errandHours?: number;
 checkJob?: boolean;
 havePets?: boolean;
@@ -349,7 +353,7 @@ static calculateTotalMinutes(
   }, 0);
   
   const addOnMinutes = Object.entries(selectedAddOns).reduce((sum, [key, count]) => {
-    // Skip outdoor cleaning as it's now handled as a boolean
+    // Skip outdoor cleaning as it's handled as a boolean service
     if (key === 'outdoor') return sum;
     const addOn = addOnsList.find(a => a.key === key);
     return sum + count * (addOn?.estimatedTime || 0);
@@ -382,6 +386,8 @@ static calculateAdditionalServicesCost(services: {
   hooverMop?: boolean;
   disinfection?: boolean;
   outdoorCleaning?: boolean;
+  oven?: boolean;
+  ovenGrill?: boolean;
   laundry?: boolean;
   errandHours?: number;
   checkJob?: boolean;
@@ -404,6 +410,8 @@ static calculateTotalPrice(
     hooverMop?: boolean;
     disinfection?: boolean;
     outdoorCleaning?: boolean;
+    oven?: boolean;
+    ovenGrill?: boolean;
     laundry?: boolean;
     errandHours?: number;
     checkJob?: boolean;
@@ -435,6 +443,8 @@ static getDetailedBreakdown(
     hooverMop?: boolean;
     disinfection?: boolean;
     outdoorCleaning?: boolean;
+    oven?: boolean;
+    ovenGrill?: boolean;
     laundry?: boolean;
     errandHours?: number;
     checkJob?: boolean;
@@ -604,8 +614,8 @@ export const addOns = [
   { key: "kitchen_inside", label: "Kitchen (inside)", estimatedTime: 60, icon: "https://www.emop.co.uk/static/images/steps_booking/kitchen_inside.svg" },
   { key: "bed_making", label: "Bed making", estimatedTime: 10, icon: "https://www.emop.co.uk/static/images/steps_booking/bed_making.svg" },
   { key: "bookcase", label: "Bookcase", estimatedTime: 25, icon: "https://www.emop.co.uk/static/images/steps_booking/bookcase.svg" },
-  { key: "oven", label: "Oven", estimatedTime: 30, icon: "https://www.emop.co.uk/static/images/steps_booking/Oven.svg", price: 25, yesNo: true },
-  { key: "oven_grill", label: "Oven & Grill", estimatedTime: 45, icon: "https://www.emop.co.uk/static/images/steps_booking/Ovenandgrill.svg", price: 35, yesNo: true },
+  { key: "oven", label: "Oven", estimatedTime: 0, icon: "https://www.emop.co.uk/static/images/steps_booking/Oven.svg", price: 20 },
+  { key: "oven_grill", label: "Oven & Grill", estimatedTime: 0, icon: "https://www.emop.co.uk/static/images/steps_booking/Ovenandgrill.svg", price: 30 },
   { key: "outdoor", label: "Outdoor cleaning", estimatedTime: 0, icon: "https://www.emop.co.uk/static/images/bookAgain/Outdoor_cleaning.svg", yesNo: true },
 ];
 
