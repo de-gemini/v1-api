@@ -8,6 +8,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
   // Start timing the bootstrap process
+  
   const startTime = Date.now();
   logger.log('🚀 Starting NestJS application bootstrap...');
   

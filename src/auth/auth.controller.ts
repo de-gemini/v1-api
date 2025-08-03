@@ -63,6 +63,8 @@ export class AuthController {
   })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
   async adminRegister(@Body() adminRegisterDto: AdminRegisterDto) {
+    //nullify this route
+    return success(adminRegisterDto, 'Admin registered successfully', 201);
     return this.authService.adminRegister(adminRegisterDto);
   }
 

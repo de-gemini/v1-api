@@ -11,7 +11,7 @@ export class MailService {
     await this.mailerService.sendMail({
       to: user.email,
       subject: 'Booking Confirmation - Gemini Cleaning Services',
-      template: './booking-confirmation',
+      template: 'booking-confirmation',
       context: {
         name: user.name,
         serviceType: booking.serviceType,
@@ -19,6 +19,29 @@ export class MailService {
         address: booking.address,
         price: booking.estimatedPrice,
       },
+    });
+  }
+
+  async sendTestEmail(to: string, name: string) {
+    await this.mailerService.sendMail({
+      to: to,
+      subject: 'Test Email - Gemini Cleaning Services',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #4CAF50;">Test Email Success!</h2>
+          <p>Hello ${name},</p>
+          <p>This is a test email to verify that your email configuration is working correctly.</p>
+          <p><strong>Email Details:</strong></p>
+          <ul>
+            <li>Sent to: ${to}</li>
+            <li>Sent at: ${new Date().toLocaleString()}</li>
+            <li>Service: Gemini Cleaning Services</li>
+          </ul>
+          <p>If you received this email, your email configuration is working properly!</p>
+          <hr style="margin: 20px 0;">
+          <p style="color: #666; font-size: 12px;">This is an automated test email from Gemini Cleaning Services.</p>
+        </div>
+      `,
     });
   }
 

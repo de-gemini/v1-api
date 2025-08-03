@@ -16,7 +16,7 @@ minimumHours: 1,
 // Minimum prices for each service type - Updated to Gemini pricing
 minimumPrices: {
   regularCleaning: 50,      // Regular/One-off cleaning minimum - Changed from 87 to 50
-  endOfTenancy: 130,        // End of Tenancy minimum - Changed from 145 to 130
+  endOfTenancy: 150,        // End of Tenancy minimum - Changed from 130 to 150
   carpetUpholstery: 80,     // Carpet & Upholstery minimum - Changed from 96 to 80
 },
 
@@ -29,7 +29,7 @@ frequencyDiscounts: {
 
 // Additional service costs
 additionalServices: {
-  endOfTenancy: 39,
+  endOfTenancy: 0,
   expressStudio: 25, // fixed
   ecoFriendly: 15,
   hooverMop: 10,
