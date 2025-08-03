@@ -77,7 +77,8 @@ export class StatisticsService {
       serviceType: (schedule.booking as any).serviceType,
       user: (schedule.booking as any).user,
       scheduledDate: schedule.startDate,
-      status: schedule.status
+      status: schedule.status,
+      estimatedPrice: (schedule.booking as any).estimatedPrice
     }));
   }
 
@@ -107,7 +108,8 @@ export class StatisticsService {
       serviceType: (schedule.booking as any).serviceType,
       user: (schedule.booking as any).user,
       scheduledDate: schedule.startDate,
-      status: schedule.status
+      status: schedule.status,
+      estimatedPrice: (schedule.booking as any).estimatedPrice
     }));
   }
 
@@ -140,7 +142,8 @@ export class StatisticsService {
       serviceType: (schedule.booking as any).serviceType,
       user: (schedule.booking as any).user,
       scheduledDate: schedule.startDate,
-      status: schedule.status
+      status: schedule.status,
+      estimatedPrice: (schedule.booking as any).estimatedPrice
     }));
   }
 
