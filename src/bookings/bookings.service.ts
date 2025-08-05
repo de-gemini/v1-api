@@ -7,9 +7,11 @@ import { Schedule, ScheduleDocument, ScheduleFrequency } from './schemas/schedul
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
+
 import { PricingStoreService } from '../common/pricing/pricingStore';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
 import { PaymentStatus, PaymentStatusHelper } from '../common/constants/payment-status.enum';
+import { Payment, PaymentDocument } from '../payments/schemas/payment.schema';
 
 
 @Injectable()
@@ -18,6 +20,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     @InjectModel(Booking.name) private bookingModel: Model<BookingDocument>,
     @InjectModel(Schedule.name) private scheduleModel: Model<ScheduleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
     private readonly mailService: MailService,
     private readonly usersService: UsersService,
     private readonly pricingStore: PricingStoreService,
@@ -223,7 +226,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   async updateSchedulePaymentStatus(scheduleId: string, paymentStatus: string): Promise<any> {
     // Normalize the payment status to ensure consistency
     const normalizedStatus = PaymentStatusHelper.normalizeStatus(paymentStatus);
-    
+    console.log({normalizedStatus,paymentStatus})
     const schedule = await this.scheduleModel
       .findByIdAndUpdate(scheduleId, { paymentStatus: normalizedStatus }, { new: true })
       .populate({
@@ -235,6 +238,32 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     if (!schedule) {
       throw new NotFoundException('Schedule not found');
     }
+    console.log({schedule})
+
+    // --- NEW LOGIC: Create Payment document if status is completed ---
+    if (normalizedStatus === PaymentStatus.COMPLETED) {
+      const booking = schedule.booking as any;
+      const user = booking.user;
+      // Check if a payment already exists for this schedule, user, and booking with status completed
+      const existingPayment = await this.paymentModel.findOne({
+        schedule: schedule._id,
+        user: user._id,
+        booking: booking._id,
+        status: PaymentStatus.COMPLETED,
+      });
+      if (!existingPayment) {
+        await this.paymentModel.create({
+          booking: booking._id,
+          user: user._id,
+          amount: booking.estimatedPrice,
+          status: PaymentStatus.COMPLETED,
+          type: 'manual-admin',
+          schedule: schedule._id,
+          paidAt: new Date(),
+        });
+      }
+    }
+    // --- END NEW LOGIC ---
 
     return schedule;
   }

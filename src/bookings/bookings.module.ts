@@ -10,11 +10,13 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { MailModule } from '../mail/mail.module';
 import { UsersModule } from '../users/users.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
+import { Payment, PaymentSchema } from '../payments/schemas/payment.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Booking.name, schema: BookingSchema },
+      { name: Payment.name, schema: PaymentSchema },
       { name: Schedule.name, schema: ScheduleSchema },
       { name: User.name, schema: UserSchema },
     ]),

@@ -88,6 +88,7 @@ export class PaymentStatusHelper {
       'paid': PaymentStatus.COMPLETED,
       'success': PaymentStatus.COMPLETED,
       'complete': PaymentStatus.COMPLETED,
+      'completed': PaymentStatus.COMPLETED,
       'failed': PaymentStatus.FAILED,
       'failure': PaymentStatus.FAILED,
       'error': PaymentStatus.FAILED,
