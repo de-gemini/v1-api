@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, Delete, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query, UseGuards, Req, Param, Patch, Delete, NotFoundException, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BookingsService } from './bookings.service';
 import { PricingService } from './services/pricing.service';
@@ -6,6 +6,7 @@ import { CreateBookingDto, ServiceType, RoomType, DirtLevel } from './dto/create
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { success } from '../common/utils/response.util';
 import { SuccessResponse } from '../common/dto/success-response.dto';
+import { PaymentStatus } from '../common/constants/payment-status.enum';
 
 interface TimeSlot {
   time: string;
@@ -130,34 +131,8 @@ export class BookingsController {
   // }
 
 
-  @Patch(':id/status')
-  @ApiOperation({ summary: 'Update booking status' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Booking status updated successfully'
-  })
-  updateStatus(
-    @Param('id') id: string,
-    @Body() body: { status: string },
-    @Req() req: any,
-  ) {
-    return this.bookingsService.updateStatus(id, body.status);
-  }
-
-  @Patch(':id/payment-method')
-  @ApiOperation({ summary: 'Update booking payment method' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Payment method updated successfully'
-  })
-  async updatePaymentMethod(
-    @Param('id') id: string,
-    @Body() body: { paymentMethod: 'card' | 'cash' },
-    @Req() req: any,
-  ) {
-    const updated = await this.bookingsService.updatePaymentMethod(id, body.paymentMethod, req.user.id);
-    return success(updated, 'Payment method updated successfully');
-  }
+  
+  
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a booking' })
@@ -255,9 +230,45 @@ export class BookingsController {
   @ApiResponse({ status: 404, description: 'Schedule not found' })
   async updateSchedulePaymentStatus(
     @Param('id') id: string,
-    @Body() body: { paymentStatus: 'pending' | 'paid' | 'failed' }
+    @Body() body: { paymentStatus: 'pending' | 'completed' | 'failed' }
   ) {
     const updatedSchedule = await this.bookingsService.updateSchedulePaymentStatus(id, body.paymentStatus);
     return success(updatedSchedule, 'Schedule payment status updated successfully');
   }
 } 
+
+
+
+
+
+@ApiTags('Bookings2')
+@Controller('bookings2')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+export class BookingsController2 {
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly pricingService: PricingService,
+  ) {
+    console.log('🔍 [DEBUG] BookingsController initialized');
+  }
+
+
+
+@Patch('/cash-pay/:id/payment-method')
+  @ApiOperation({ summary: 'Update booking payment method' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Payment method updated successfully'
+  })
+  async updatePaymentMethod(
+    @Param('id') id: string,
+    @Body() body: { paymentMethod: 'card' | 'cash' },
+    @Req() req: any,
+  ) {
+    console.log("here")
+    const updated = await this.bookingsService.updatePaymentMethod(id, body.paymentMethod, req.user.id);
+    return success(updated, 'Payment method updated successfully');
+  }
+
+}

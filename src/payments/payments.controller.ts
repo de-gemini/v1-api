@@ -28,6 +28,7 @@ import { success } from '../common/utils/response.util';
 import { SuccessResponse } from '../common/dto/success-response.dto';
 import { Request, Response } from 'express';
 import Stripe from 'stripe';
+import { PaymentStatus } from '../common/constants/payment-status.enum';
 
 @ApiTags('Payments')
 @Controller('payments')
@@ -102,7 +103,11 @@ export class PaymentsController {
         ...(body.paymentMethodId ? { stripePaymentMethodId: body.paymentMethodId } : {}),
       }
     );
-    await this.bookingsService.updatePaymentStatus(booking._id.toString(), 'pending');
+    // Update schedule payment status instead of booking payment status
+    await this.bookingsService['scheduleModel'].updateMany(
+      { booking: booking._id },
+      { paymentStatus: PaymentStatus.PENDING }
+    );
     return success({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,

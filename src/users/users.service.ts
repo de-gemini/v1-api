@@ -47,6 +47,16 @@ export class UsersService extends BaseRepository<UserDocument> {
         throw new ConflictException('Email already exists');
       }
     }
+    // Concatenate firstName and lastName to update the name field if either is present
+    if ('firstName' in userData || 'lastName' in userData) {
+      // Fetch the current user to get existing values
+      const currentUser = await this.findById(id);
+      if (currentUser) {
+        const firstName = userData.firstName !== undefined ? userData.firstName : currentUser.firstName || '';
+        const lastName = userData.lastName !== undefined ? userData.lastName : currentUser.lastName || '';
+        userData.name = `${firstName} ${lastName}`.trim();
+      }
+    }
     return await super.findByIdAndUpdate(id, userData);
   }
 

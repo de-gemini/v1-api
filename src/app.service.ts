@@ -17,7 +17,6 @@ export class AppService {
       timestamp: new Date().toISOString(),
     };
   }
-
   getStartupInfo(): { startupTime: number; uptime: number } {
     const uptime = Date.now() - this.startupTime;
     this.logger.log(`📊 App uptime: ${uptime}ms`);

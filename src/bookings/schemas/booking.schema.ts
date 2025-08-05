@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
 import { Base, BaseDocument } from '../../common/schemas/base.schema';
+import { User } from '../../users/schemas/user.schema';
 
 export type BookingDocument = Booking & BaseDocument;
 
@@ -38,11 +38,7 @@ export class Booking extends Base {
   @Prop({ required: true })
   address: string;
 
-  @Prop({ default: 'pending', select: false }) // Exclude from queries by default
-  status: string;
-
-  @Prop({ default: 'pending', select: false }) // Exclude from queries by default
-  paymentStatus: string;
+  // STATUS FIELDS REMOVED - Use schedule status instead
 
   @Prop()
   notes: string;
@@ -62,13 +58,6 @@ export class Booking extends Base {
 
   @Prop()
   stripeCustomerId: string;
-
-  @Prop({ 
-    type: String, 
-    enum: ['card', 'cash', 'pending'],
-    default: 'pending' 
-  })
-  paymentMethod: string;
 
   @Prop()
   actualDuration: number;

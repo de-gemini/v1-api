@@ -2,10 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
 import { User } from '../users/schemas/user.schema';
 import { Booking } from '../bookings/schemas/booking.schema';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Schedule, ScheduleDocument } from '../bookings/schemas/schedule.schema';
 
 @Injectable()
 export class MailService {
-  constructor(private mailerService: MailerService) {}
+  constructor(
+    private mailerService: MailerService,
+    @InjectModel(Schedule.name) private scheduleModel: Model<ScheduleDocument>,
+  ) {}
 
   async sendBookingConfirmation(user: User, booking: Booking) {
     await this.mailerService.sendMail({
@@ -46,15 +52,23 @@ export class MailService {
   }
 
   async sendBookingStatusUpdate(user: User, booking: Booking) {
+    // Get the primary schedule for this booking to get the current status
+    const primarySchedule = await this.scheduleModel
+      .findOne({ booking: booking._id })
+      .sort({ startDate: 1 })
+      .exec();
+
+    const status = primarySchedule?.status || 'pending';
+
     await this.mailerService.sendMail({
       to: user.email,
-      subject: `Booking Status Update - ${booking.status}`,
+      subject: `Schedule Status Update - ${status}`,
       template: './booking-status-update',
       context: {
         name: user.name,
         serviceType: booking.serviceType,
         scheduledDate: booking.scheduledDate,
-        status: booking.status,
+        status: status,
       },
     });
   }

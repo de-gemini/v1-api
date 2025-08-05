@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { PricingStoreService } from '../common/pricing/pricingStore';
 import { SystemSettingsService } from '../system-settings/system-settings.service';
+import { PaymentStatus, PaymentStatusHelper } from '../common/constants/payment-status.enum';
 
 
 @Injectable()
@@ -54,7 +55,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     const booking = await super.create({
       ...rest,
       user: user, // Pass the full user object, not just user._id
-      status: 'pending',
+      // status field removed - use schedule status instead
       subscriptionMonths,
       schedulesCount: 1, // Will update after schedule creation
       serverPrice: bookingData.estimatedPrice, // Use frontend price as server price
@@ -162,7 +163,7 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       .exec();
   }
 
-  async findOneByUser(userId: string, bookingId: string): Promise<Booking> {
+  async findOneByUser(userId: string, bookingId: string): Promise<Booking & { status: string; paymentStatus: string }> {
     console.log('🔍 [DEBUG] findOneByUser called with userId:', userId, 'bookingId:', bookingId);
     
     const booking = await this.bookingModel
@@ -177,7 +178,23 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       throw new NotFoundException('Booking not found');
     }
 
-    return booking;
+    // Get the primary schedule for this booking to include status
+    const primarySchedule = await this.scheduleModel
+      .findOne({ booking: bookingId })
+      .sort({ startDate: 1 }) // Get the earliest schedule
+      .exec();
+
+    // Add schedule status to booking response
+    const bookingWithStatus = booking.toObject() as any;
+    if (primarySchedule) {
+      bookingWithStatus.status = primarySchedule.status;
+      bookingWithStatus.paymentStatus = primarySchedule.paymentStatus;
+    } else {
+      bookingWithStatus.status = 'pending';
+      bookingWithStatus.paymentStatus = 'pending';
+    }
+
+    return bookingWithStatus;
   }
 
   async findById(bookingId: string): Promise<BookingDocument | null> {
@@ -185,20 +202,6 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       .findById(bookingId)
       .populate('user', '-password')
       .exec();
-  }
-
-  async updateStatus(bookingId: string, status: string): Promise<Booking> {
-    const booking = await this.bookingModel
-      .findByIdAndUpdate(bookingId, { status }, { new: true })
-      .populate('user', '-password')
-      .exec();
-
-    if (!booking) {
-      throw new NotFoundException('Booking not found');
-    }
-
-    // await this.mailService.sendBookingStatusUpdate(booking.user as User, booking);
-    return booking;
   }
 
   async updateScheduleStatus(scheduleId: string, status: string): Promise<any> {
@@ -218,8 +221,11 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   }
 
   async updateSchedulePaymentStatus(scheduleId: string, paymentStatus: string): Promise<any> {
+    // Normalize the payment status to ensure consistency
+    const normalizedStatus = PaymentStatusHelper.normalizeStatus(paymentStatus);
+    
     const schedule = await this.scheduleModel
-      .findByIdAndUpdate(scheduleId, { paymentStatus }, { new: true })
+      .findByIdAndUpdate(scheduleId, { paymentStatus: normalizedStatus }, { new: true })
       .populate({
         path: 'booking',
         populate: { path: 'user', select: '-password' }
@@ -241,35 +247,6 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
-  }
-
-  // Additional methods using the base repository
-  // Note: These methods are for internal use only - booking status is never sent to frontend
-  async findByStatus(status: string): Promise<Booking[]> {
-    return await this.bookingModel
-      .find({ status })
-      .populate('user', '-password')
-      .exec();
-  }
-
-  async findByPaymentStatus(paymentStatus: string): Promise<Booking[]> {
-    return await this.bookingModel
-      .find({ paymentStatus })
-      .populate('user', '-password')
-      .exec();
-  }
-
-  async updatePaymentStatus(bookingId: string, paymentStatus: string): Promise<Booking> {
-    const booking = await this.bookingModel
-      .findByIdAndUpdate(bookingId, { paymentStatus }, { new: true })
-      .populate('user', '-password')
-      .exec();
-
-    if (!booking) {
-      throw new NotFoundException('Booking not found');
-    }
-
-    return booking;
   }
 
   async getAllSchedulesWithDetails(filter?: { year: string, month: string }) {
@@ -377,12 +354,13 @@ export class BookingsService extends BaseRepository<BookingDocument> {
   // }
 
   async updatePaymentMethod(bookingId: string, paymentMethod: 'card' | 'cash', userId: string): Promise<Booking> {
+    console.log('🔍 [DEBUG] updatePaymentMethod called with bookingId:', bookingId, 'paymentMethod:', paymentMethod, 'userId:', userId);
     const booking = await this.bookingModel
       .findOneAndUpdate(
         { _id: bookingId, user: userId },
         { 
           paymentMethod,
-          ...(paymentMethod === 'cash' && { paymentStatus: 'pending' })
+          ...(paymentMethod === 'cash' && { paymentStatus: PaymentStatus.PENDING })
         },
         { new: true }
       )
@@ -392,6 +370,16 @@ export class BookingsService extends BaseRepository<BookingDocument> {
     if (!booking) {
       throw new NotFoundException('Booking not found');
     }
+
+    // Update all schedules for this booking to reflect the payment method
+    await this.scheduleModel.updateMany(
+      { booking: bookingId },
+      { 
+        paidWithCash: paymentMethod === 'cash',
+        // If cash payment, set payment status to pending
+        ...(paymentMethod === 'cash' && { paymentStatus: PaymentStatus.PENDING })
+      }
+    );
 
     return booking;
   }

@@ -31,6 +31,7 @@ import { MailService } from '../../mail/mail.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Payment, PaymentDocument } from '../schemas/payment.schema';
 import { Model } from 'mongoose';
+import { PaymentStatus, PaymentStatusHelper } from '../../common/constants/payment-status.enum';
 
 @Injectable()
 export class StripeService {
@@ -321,7 +322,7 @@ export class StripeService {
             booking: bookingId,
             user: userId,
             amount,
-            status: 'succeeded',
+            status: PaymentStatus.COMPLETED,
             type: paymentType,
             paidAt: new Date(),
             schedule: scheduleId,
@@ -346,14 +347,12 @@ export class StripeService {
             }
           );
           this.logger.log(`[Stripe Webhook] Updated booking ${bookingId} with customerId: ${paymentIntent.customer}, paymentMethodId: ${paymentIntent.payment_method}`);
-          await this.bookingsService.updatePaymentStatus(bookingId, 'completed');
-          this.logger.log(`[Stripe Webhook] Booking ${bookingId} paymentStatus set to completed (one-time payment)`);
-          // Update all related schedules for this booking
+          // Update all related schedules for this booking instead of booking payment status
           const scheduleResult = await this.bookingsService['scheduleModel'].updateMany(
             { booking: bookingId },
-            { paymentStatus: 'completed' }
+            { paymentStatus: PaymentStatus.COMPLETED }
           );
-          this.logger.log(`[Stripe Webhook] Updated all schedules for booking ${bookingId} to paymentStatus: completed. Result: ${JSON.stringify(scheduleResult)}`);
+          this.logger.log(`[Stripe Webhook] Updated all schedules for booking ${bookingId} to paymentStatus: ${PaymentStatus.COMPLETED}. Result: ${JSON.stringify(scheduleResult)}`);
         } else {
           this.logger.warn(`[Stripe Webhook] Booking not found for bookingId: ${bookingId}`);
         }
@@ -370,8 +369,12 @@ export class StripeService {
         }
         const failedBooking = await this.bookingsService.findById(bookingId);
         if (failedBooking) {
-          await this.bookingsService.updatePaymentStatus(bookingId, 'failed');
-          this.logger.log(`[Stripe Webhook] Booking ${bookingId} paymentStatus set to failed (one-time payment)`);
+          // Update all related schedules for this booking instead of booking payment status
+          const scheduleResult = await this.bookingsService['scheduleModel'].updateMany(
+            { booking: bookingId },
+            { paymentStatus: PaymentStatus.FAILED }
+          );
+          this.logger.log(`[Stripe Webhook] Updated all schedules for booking ${bookingId} to paymentStatus: ${PaymentStatus.FAILED}. Result: ${JSON.stringify(scheduleResult)}`);
         } else {
           this.logger.warn(`[Stripe Webhook] Booking not found for bookingId: ${bookingId}`);
         }
@@ -421,7 +424,7 @@ export class StripeService {
             booking: bookingId,
             user: userId,
             amount,
-            status: 'succeeded',
+            status: PaymentStatus.COMPLETED,
             type: 'subscription',
             paidAt: new Date(),
             schedule: scheduleId,
@@ -431,14 +434,14 @@ export class StripeService {
         if (bookingId) {
           // Update the earliest unpaid schedule for this booking (startDate >= now, paymentStatus != 'completed')
           const now = new Date();
-          this.logger.log(`[Stripe Webhook] Schedule update criteria: { booking: ${bookingId}, paymentStatus: { $ne: 'completed' }, startDate: { $gte: ${now.toISOString()} } }`);
+          this.logger.log(`[Stripe Webhook] Schedule update criteria: { booking: ${bookingId}, paymentStatus: { $ne: '${PaymentStatus.COMPLETED}' }, startDate: { $gte: ${now.toISOString()} } }`);
           const nextSchedule = await this.bookingsService['scheduleModel'].findOneAndUpdate(
             {
               booking: bookingId,
-              paymentStatus: { $ne: 'completed' },
+              paymentStatus: { $ne: PaymentStatus.COMPLETED },
               startDate: { $gte: now }
             },
-            { paymentStatus: 'completed' },
+            { paymentStatus: PaymentStatus.COMPLETED },
             { sort: { startDate: 1 }, new: true }
           );
           if (nextSchedule) {
@@ -446,8 +449,8 @@ export class StripeService {
           } else {
             this.logger.warn(`[Stripe Webhook] No unpaid future schedule found for booking ${bookingId}`);
           }
-          const booking = await this.bookingsService.updatePaymentStatus(bookingId, 'completed');
-          this.logger.log(`[Stripe Webhook] Booking ${bookingId} paymentStatus set to completed (subscription payment)`);
+          // Remove booking payment status update - schedule status is already updated above
+          this.logger.log(`[Stripe Webhook] Schedule payment status updated for booking ${bookingId} (subscription payment)`);
         }
         break;
       }
@@ -461,8 +464,12 @@ export class StripeService {
         }
         this.logger.log(`[Stripe Webhook] invoice.payment_failed: invoice ${invoice.id}, customer: ${invoice.customer}, bookingId: ${bookingId}`);
         if (bookingId) {
-          await this.bookingsService.updatePaymentStatus(bookingId, 'failed');
-          this.logger.log(`[Stripe Webhook] Booking ${bookingId} paymentStatus set to failed (subscription payment)`);
+          // Update all related schedules for this booking instead of booking payment status
+          const scheduleResult = await this.bookingsService['scheduleModel'].updateMany(
+            { booking: bookingId },
+            { paymentStatus: PaymentStatus.FAILED }
+          );
+          this.logger.log(`[Stripe Webhook] Updated all schedules for booking ${bookingId} to paymentStatus: ${PaymentStatus.FAILED}. Result: ${JSON.stringify(scheduleResult)}`);
         }
         break;
       }

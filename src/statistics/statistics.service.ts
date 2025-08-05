@@ -31,7 +31,7 @@ export class StatisticsService {
 
   async getTotalRevenue() {
     const result = await this.paymentModel.aggregate([
-      { $match: { status: 'succeeded' } },
+      { $match: { status: 'completed' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
     return result[0]?.total || 0;
@@ -41,7 +41,7 @@ export class StatisticsService {
     // Count users who made their first successful payment since the given date
     // This gives us actual new paying customers, not just registered users
     const result = await this.paymentModel.aggregate([
-      { $match: { status: 'succeeded', paidAt: { $gte: since } } },
+      { $match: { status: 'completed', paidAt: { $gte: since } } },
       { $group: { _id: '$user', firstPayment: { $min: '$paidAt' } } },
       { $match: { firstPayment: { $gte: since } } },
       { $count: 'total' }

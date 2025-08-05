@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { BookingsController } from './bookings.controller';
+import { BookingsController, BookingsController2 } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 import { PricingService } from './services/pricing.service';
 import { PricingStoreService } from '../common/pricing/pricingStore';
@@ -22,7 +22,7 @@ import { SystemSettingsModule } from '../system-settings/system-settings.module'
     UsersModule,
     SystemSettingsModule,
   ],
-  controllers: [BookingsController],
+  controllers: [BookingsController,BookingsController2],
   providers: [BookingsService, PricingService, PricingStoreService],
   exports: [BookingsService],
 })

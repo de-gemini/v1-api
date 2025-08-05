@@ -25,6 +25,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 import { Booking } from '../../bookings/schemas/booking.schema';
 import { User } from '../../users/schemas/user.schema';
+import { PaymentStatus } from '../../common/constants/payment-status.enum';
 
 export type PaymentDocument = Payment & Document;
 
@@ -43,11 +44,15 @@ export class Payment {
   })
   amount: number;
 
-  @Prop({ required: true })
-  status: string; // 'succeeded', 'failed', etc.
+  @Prop({ 
+    type: String, 
+    enum: Object.values(PaymentStatus), 
+    required: true 
+  })
+  status: PaymentStatus;
 
   @Prop({ required: true })
-  type: string; // 'one-time', 'subscription', etc.
+  type: string; // 'one-time', 'subscription', 'off-session', etc.
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Schedule', required: false })
   schedule?: any;
