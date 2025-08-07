@@ -54,6 +54,11 @@ import { SystemSettingsModule } from './system-settings/system-settings.module';
         const mailUser = config.get('MAIL_USER');
         const mailPassword = config.get('MAIL_PASSWORD');
         const mailFrom = config.get('MAIL_FROM');
+        const mailPort = parseInt(config.get('MAIL_PORT') || '', 10) || 465;
+        const secure = mailPort === 465;
+        
+        logger.log(`📦 Using mail port: ${mailPort}`);
+        logger.log(`🔒 Using secure: ${secure}`);
         
         if (!mailHost || !mailUser || !mailPassword || !mailFrom) {
           logger.warn('⚠️ Some mail configuration is missing - email functionality may not work');
@@ -61,15 +66,17 @@ import { SystemSettingsModule } from './system-settings/system-settings.module';
           logger.log('✅ Mail configuration complete');
         }
         
-        return {
-          transport: {
-            host: mailHost,
-            secure: true,
-            auth: {
-              user: mailUser,
-              pass: mailPassword,
-            },
+        const transportConfig: any = {
+          host: mailHost,
+          port: mailPort,
+          secure,
+          auth: {
+            user: mailUser,
+            pass: mailPassword,
           },
+        };
+        return {
+          transport: transportConfig,
           defaults: {
             from: mailFrom,
           },

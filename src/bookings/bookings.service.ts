@@ -67,7 +67,20 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       schedulesCount: schedulesCreated,
       subscriptionMonths,
     });
-    // await this.mailService.sendBookingConfirmation(user, booking);
+
+    // Send emails
+    try {
+      await this.mailService.sendBookingConfirmation(user, booking);
+    } catch (e) {
+      // Non-blocking: log and continue
+      console.error('Failed to send booking confirmation email:', e?.message || e);
+    }
+    try {
+      await this.mailService.notifyAdminsOfNewBooking(user, booking);
+    } catch (e) {
+      console.error('Failed to notify admins of new booking:', e?.message || e);
+    }
+
     return booking;
   }
 
