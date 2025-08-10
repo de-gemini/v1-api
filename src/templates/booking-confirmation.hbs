@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Booking Confirmation</title>
+    <title>Booking Confirmation - Payment Required</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,7 +15,7 @@
             padding: 20px;
         }
         .header {
-            background-color: #4CAF50;
+            background-color: #FF9800;
             color: white;
             padding: 20px;
             text-align: center;
@@ -23,6 +23,22 @@
         .content {
             padding: 20px;
             background-color: #f9f9f9;
+        }
+        .payment-notice {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 15px 0;
         }
         .footer {
             text-align: center;
@@ -35,19 +51,34 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Booking Confirmation</h1>
+            <h1>Booking Confirmation - Payment Required</h1>
         </div>
         <div class="content">
             <p>Dear {{name}},</p>
-            <p>Thank you for booking our cleaning service. Here are your booking details:</p>
+            <p>Thank you for booking our cleaning service! Your booking has been created successfully.</p>
+            
+            <div class="payment-notice">
+                <h3>⚠️ Payment Required</h3>
+                <p><strong>Your booking is not confirmed until payment is completed.</strong></p>
+                <p>To complete your booking and secure your cleaning slot, please complete the payment process.</p>
+            </div>
+
+            <h3>Booking Details:</h3>
             <ul>
                 <li><strong>Service Type:</strong> {{serviceType}}</li>
                 <li><strong>Date:</strong> {{scheduledDate}}</li>
                 <li><strong>Address:</strong> {{address}}</li>
                 <li><strong>Price:</strong> ${{price}}</li>
             </ul>
-            <p>We will arrive at the scheduled time. Please ensure someone is available to provide access to the premises.</p>
-            <p>If you need to make any changes to your booking, please contact us as soon as possible.</p>
+
+            <h3>Complete Your Payment:</h3>
+            <p>Please visit your dashboard and click on the "Complete Payment" option to finalize your booking.</p>
+            
+            <a href="{{dashboardUrl}}" class="cta-button">Go to Dashboard</a>
+
+            <p><strong>Important:</strong> Your cleaning slot will only be reserved once payment is completed. Please complete payment as soon as possible to avoid losing your preferred time slot.</p>
+            
+            <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
         </div>
         <div class="footer">
             <p>© 2024 Gemini Cleaning Services. All rights reserved.</p>

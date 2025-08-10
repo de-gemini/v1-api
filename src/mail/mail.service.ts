@@ -17,17 +17,97 @@ export class MailService {
   ) {}
 
   async sendBookingConfirmation(user: User, booking: Booking) {
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'To be scheduled';
+
     await this.mailerService.sendMail({
       to: user.email,
-      subject: 'Booking Confirmation - Gemini Cleaning Services',
+      subject: 'Booking Confirmation - Payment Required - Gemini Cleaning Services',
       template: 'booking-confirmation',
       context: {
         name: user.name,
         serviceType: booking.serviceType,
-        scheduledDate: booking.scheduledDate,
+        scheduledDate: formattedDate,
         address: booking.address,
         price: booking.estimatedPrice,
+        dashboardUrl: `${process.env.FRONTEND_URL || 'https://degeminiservices.co.uk'}/dashboard`,
       },
+    });
+  }
+
+  async sendPaymentConfirmation(user: User, booking: Booking, amount: number, paymentMethod: string) {
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'To be scheduled';
+
+    await this.mailerService.sendMail({
+      to: user.email,
+      subject: 'Payment Confirmation - Booking Confirmed - Gemini Cleaning Services',
+      template: 'payment-confirmation',
+      context: {
+        name: user.name,
+        serviceType: booking.serviceType,
+        scheduledDate: formattedDate,
+        address: booking.address,
+        amount: amount,
+        paymentMethod: paymentMethod,
+      },
+    });
+  }
+
+  async notifyAdminsOfPaymentSuccess(user: User, booking: Booking, amount: number) {
+    const recipients = getValidAdminEmails();
+    if (recipients.length === 0) {
+      this.logger.warn('No valid admin emails configured, skipping admin notification');
+      return;
+    }
+
+    const subject = `Payment Successful - ${user.name} - ${booking.serviceType}`;
+
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+
+    await this.mailerService.sendMail({
+      to: recipients[0],
+      bcc: recipients.slice(1),
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 16px;">
+          <h2>Payment Successful Notification</h2>
+          <p>A payment has been successfully processed for an existing booking.</p>
+          <h3>Customer</h3>
+          <ul>
+            <li>Name: ${user.name}</li>
+            <li>Email: ${user.email}</li>
+          </ul>
+          <h3>Booking Details</h3>
+          <ul>
+            <li>Service: ${booking.serviceType}</li>
+            <li>Scheduled Date: ${formattedDate}</li>
+            <li>Address: ${booking.address}</li>
+            <li>Amount Paid: £${amount}</li>
+            <li>Frequency: ${booking.frequency}</li>
+          </ul>
+          <p>Booking ID: ${booking._id}</p>
+          <p><strong>Status: Payment completed - Booking now confirmed</strong></p>
+        </div>
+      `,
     });
   }
 
@@ -39,6 +119,10 @@ export class MailService {
     }
 
     const subject = `New Booking Created - ${user.name} - ${booking.serviceType}`;
+
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
 
     await this.mailerService.sendMail({
       to: recipients[0],
@@ -56,7 +140,7 @@ export class MailService {
           <h3>Booking Details</h3>
           <ul>
             <li>Service: ${booking.serviceType}</li>
-            <li>Scheduled Date: ${new Date(booking.scheduledDate).toLocaleString()}</li>
+            <li>Scheduled Date: ${formattedDate}</li>
             <li>Address: ${booking.address}</li>
             <li>Estimated Price: £${booking.estimatedPrice}</li>
             <li>Frequency: ${booking.frequency}</li>
@@ -130,24 +214,55 @@ export class MailService {
     }
   }
 
-  async sendBookingStatusUpdate(user: User, booking: Booking) {
-    // Get the primary schedule for this booking to get the current status
-    const primarySchedule = await this.scheduleModel
-      .findOne({ booking: booking._id })
-      .sort({ startDate: 1 })
-      .exec();
+  async sendBookingStatusUpdate(user: User, booking: Booking, status?: string) {
+    // Use provided status or get from primary schedule
+    let finalStatus = status;
+    if (!finalStatus) {
+      const primarySchedule = await this.scheduleModel
+        .findOne({ booking: booking._id })
+        .sort({ startDate: 1 })
+        .exec();
+      finalStatus = primarySchedule?.status || 'pending';
+    }
 
-    const status = primarySchedule?.status || 'pending';
+    // Determine subject based on status
+    let subject = 'Schedule Status Update';
+    switch (finalStatus) {
+      case 'confirmed':
+        subject = 'Booking Confirmed - Your Cleaning Service is Scheduled';
+        break;
+      case 'completed':
+        subject = 'Service Completed - Thank You for Choosing Gemini Cleaning';
+        break;
+      case 'cancelled':
+        subject = 'Booking Cancelled - Gemini Cleaning Services';
+        break;
+      default:
+        subject = `Schedule Status Update - ${finalStatus}`;
+    }
+
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'To be scheduled';
 
     await this.mailerService.sendMail({
       to: user.email,
-      subject: `Schedule Status Update - ${status}`,
+      subject,
       template: './booking-status-update',
       context: {
         name: user.name,
         serviceType: booking.serviceType,
-        scheduledDate: booking.scheduledDate,
-        status: status,
+        scheduledDate: formattedDate,
+        status: finalStatus,
+        address: booking.address,
+        price: booking.estimatedPrice,
       },
     });
   }
@@ -175,6 +290,114 @@ export class MailService {
       context: {
         name: user.name,
       },
+    });
+  }
+
+  async sendCashPaymentNotification(user: User, booking: Booking) {
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) : 'To be scheduled';
+
+    await this.mailerService.sendMail({
+      to: user.email,
+      subject: 'Cash Payment Selected - Gemini Cleaning Services',
+      template: 'cash-payment-selected',
+      context: {
+        name: user.name,
+        serviceType: booking.serviceType,
+        scheduledDate: formattedDate,
+        address: booking.address,
+        price: booking.estimatedPrice,
+        dashboardUrl: `${process.env.FRONTEND_URL || 'https://degeminiservices.co.uk'}/dashboard`,
+      },
+    });
+  }
+
+  async notifyAdminsOfCashPayment(user: User, booking: Booking) {
+    const recipients = getValidAdminEmails();
+    if (recipients.length === 0) {
+      this.logger.warn('No valid admin emails configured, skipping admin notification');
+      return;
+    }
+
+    const subject = `Cash Payment Selected - ${user.name} - ${booking.serviceType}`;
+
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+
+    await this.mailerService.sendMail({
+      to: recipients[0],
+      bcc: recipients.slice(1),
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 16px;">
+          <h2>Cash Payment Notification</h2>
+          <p>A customer has selected cash payment for their booking.</p>
+          <h3>Customer</h3>
+          <ul>
+            <li>Name: ${user.name}</li>
+            <li>Email: ${user.email}</li>
+          </ul>
+          <h3>Booking Details</h3>
+          <ul>
+            <li>Service: ${booking.serviceType}</li>
+            <li>Scheduled Date: ${formattedDate}</li>
+            <li>Address: ${booking.address}</li>
+            <li>Estimated Price: £${booking.estimatedPrice}</li>
+            <li>Frequency: ${booking.frequency}</li>
+          </ul>
+          <p>Booking ID: ${booking._id}</p>
+          <p><strong>Status: Cash payment selected - Payment pending</strong></p>
+          <p><em>Note: Customer will pay in cash on the day of service.</em></p>
+        </div>
+      `,
+    });
+  }
+
+  async notifyAdminsOfStatusChange(user: User, booking: Booking, status: string) {
+    const recipients = getValidAdminEmails();
+    if (recipients.length === 0) {
+      this.logger.warn('No valid admin emails configured, skipping admin notification');
+      return;
+    }
+
+    const subject = `Booking Status Changed - ${status} - ${user.name} - ${booking.serviceType}`;
+
+    // Use the most appropriate date field
+    const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
+    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+
+    await this.mailerService.sendMail({
+      to: recipients[0],
+      bcc: recipients.slice(1),
+      subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 16px;">
+          <h2>Booking Status Change Notification</h2>
+          <p>A booking status has been updated.</p>
+          <h3>Customer</h3>
+          <ul>
+            <li>Name: ${user.name}</li>
+            <li>Email: ${user.email}</li>
+          </ul>
+          <h3>Booking Details</h3>
+          <ul>
+            <li>Service Type: ${booking.serviceType}</li>
+            <li>Scheduled Date: ${formattedDate}</li>
+            <li>Address: ${booking.address}</li>
+            <li>Price: £${booking.estimatedPrice}</li>
+            <li>New Status: <strong>${status}</strong></li>
+          </ul>
+        </div>
+      `,
     });
   }
 } 

@@ -69,18 +69,8 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       subscriptionMonths,
     });
 
-    // Send emails
-    try {
-      await this.mailService.sendBookingConfirmation(user, booking);
-    } catch (e) {
-      // Non-blocking: log and continue
-      console.error('Failed to send booking confirmation email:', e?.message || e);
-    }
-    try {
-      await this.mailService.notifyAdminsOfNewBooking(user, booking);
-    } catch (e) {
-      console.error('Failed to notify admins of new booking:', e?.message || e);
-    }
+    // Emails will be sent when payment is completed via webhook
+    // this.logger.log(`Booking created successfully for user ${userId}. Emails will be sent upon payment completion.`);
 
     return booking;
   }
@@ -229,6 +219,25 @@ export class BookingsService extends BaseRepository<BookingDocument> {
 
     if (!schedule) {
       throw new NotFoundException('Schedule not found');
+    }
+
+    // Send email notification for status changes
+    try {
+      const booking = schedule.booking as any;
+      const user = booking.user;
+      
+      if (user && ['confirmed', 'completed', 'cancelled'].includes(status)) {
+        // Send notification to user
+        await this.mailService.sendBookingStatusUpdate(user, booking, status);
+        console.log(`[DEBUG] Status update email sent to user ${user.email} for status: ${status}`);
+        
+        // Send notification to admins
+        await this.mailService.notifyAdminsOfStatusChange(user, booking, status);
+        console.log(`[DEBUG] Admin notification email sent for status change: ${status}`);
+      }
+    } catch (emailError) {
+      console.error(`[ERROR] Failed to send status update email: ${emailError?.message || emailError}`);
+      // Don't throw error here - email failure shouldn't break the status update
     }
 
     return schedule;
@@ -420,6 +429,25 @@ export class BookingsService extends BaseRepository<BookingDocument> {
         ...(paymentMethod === 'cash' && { paymentStatus: PaymentStatus.PENDING })
       }
     );
+
+    // Send email notifications if cash payment is selected
+    if (paymentMethod === 'cash') {
+      try {
+        const user = booking.user as any;
+        if (user) {
+          // Send notification to user about cash payment selection
+          await this.mailService.sendCashPaymentNotification(user, booking);
+          console.log(`[DEBUG] Cash payment notification email sent to user ${user.email}`);
+          
+          // Notify admins about cash payment selection
+          await this.mailService.notifyAdminsOfCashPayment(user, booking);
+          console.log(`[DEBUG] Admin notification email sent for cash payment selection`);
+        }
+      } catch (emailError) {
+        console.error(`[ERROR] Failed to send cash payment notification emails: ${emailError?.message || emailError}`);
+        // Don't throw error here - email failure shouldn't break the payment method update
+      }
+    }
 
     return booking;
   }

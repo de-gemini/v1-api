@@ -6,12 +6,14 @@ import { MailModule } from '../mail/mail.module';
 import { STRIPE_CONFIG, StripeConfig } from './stripe.config';
 import { BookingsService } from 'src/bookings/bookings.service';
 import { Payment, PaymentSchema } from './schemas/payment.schema';
+import { User, UserSchema } from '../users/schemas/user.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Payment.name, schema: PaymentSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     BookingsModule,
     MailModule,

@@ -30,6 +30,7 @@ import { BookingsService } from '../../bookings/bookings.service';
 import { MailService } from '../../mail/mail.service';
 import { InjectModel } from '@nestjs/mongoose';
 import { Payment, PaymentDocument } from '../schemas/payment.schema';
+import { User, UserDocument } from '../../users/schemas/user.schema';
 import { Model } from 'mongoose';
 import { PaymentStatus, PaymentStatusHelper } from '../../common/constants/payment-status.enum';
 
@@ -44,6 +45,7 @@ export class StripeService {
     @Inject(forwardRef(() => BookingsService)) private readonly bookingsService: BookingsService,
     @Inject(forwardRef(() => MailService)) private readonly mailService: MailService,
     @InjectModel(Payment.name) private paymentModel: Model<PaymentDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {
     if (!config.apiKey) {
       throw new Error('Stripe API key is required');
@@ -328,7 +330,6 @@ export class StripeService {
             schedule: scheduleId,
           });
         }
-        this.logger.log(event.data.object)
 
         this.logger.log(`[Stripe Webhook] payment_intent.succeeded for bookingId: ${bookingId}, userId: ${userId}`);
         if (!bookingId) {
@@ -347,12 +348,29 @@ export class StripeService {
             }
           );
           this.logger.log(`[Stripe Webhook] Updated booking ${bookingId} with customerId: ${paymentIntent.customer}, paymentMethodId: ${paymentIntent.payment_method}`);
+          
           // Update all related schedules for this booking instead of booking payment status
           const scheduleResult = await this.bookingsService['scheduleModel'].updateMany(
             { booking: bookingId },
             { paymentStatus: PaymentStatus.COMPLETED }
           );
           this.logger.log(`[Stripe Webhook] Updated all schedules for booking ${bookingId} to paymentStatus: ${PaymentStatus.COMPLETED}. Result: ${JSON.stringify(scheduleResult)}`);
+
+          // Send payment confirmation emails
+          try {
+            const user = await this.userModel.findById(userId);
+            if (user) {
+              // Send payment confirmation to user
+              await this.mailService.sendPaymentConfirmation(user, booking, amount, 'Card Payment');
+              this.logger.log(`[Stripe Webhook] Payment confirmation email sent to user ${userId}`);
+              
+              // Notify admins of payment success
+              await this.mailService.notifyAdminsOfPaymentSuccess(user, booking, amount);
+              this.logger.log(`[Stripe Webhook] Admin notification email sent for payment success`);
+            }
+          } catch (emailError) {
+            this.logger.error(`[Stripe Webhook] Failed to send payment confirmation emails: ${emailError?.message || emailError}`);
+          }
         } else {
           this.logger.warn(`[Stripe Webhook] Booking not found for bookingId: ${bookingId}`);
         }
@@ -432,6 +450,9 @@ export class StripeService {
         }
         this.logger.log(`[Stripe Webhook] invoice.payment_succeeded for bookingId: ${bookingId}, invoice: ${invoice.id}`);
         if (bookingId) {
+          // Get the booking object for email sending
+          const booking = await this.bookingsService.findById(bookingId);
+          
           // Update the earliest unpaid schedule for this booking (startDate >= now, paymentStatus != 'completed')
           const now = new Date();
           this.logger.log(`[Stripe Webhook] Schedule update criteria: { booking: ${bookingId}, paymentStatus: { $ne: '${PaymentStatus.COMPLETED}' }, startDate: { $gte: ${now.toISOString()} } }`);
@@ -451,6 +472,24 @@ export class StripeService {
           }
           // Remove booking payment status update - schedule status is already updated above
           this.logger.log(`[Stripe Webhook] Schedule payment status updated for booking ${bookingId} (subscription payment)`);
+
+          // Send payment confirmation emails for subscription payment
+          if (booking && userId) {
+            try {
+              const user = await this.userModel.findById(userId);
+              if (user) {
+                // Send payment confirmation to user
+                await this.mailService.sendPaymentConfirmation(user, booking, amount, 'Subscription Payment');
+                this.logger.log(`[Stripe Webhook] Subscription payment confirmation email sent to user ${userId}`);
+                
+                // Notify admins of payment success
+                await this.mailService.notifyAdminsOfPaymentSuccess(user, booking, amount);
+                this.logger.log(`[Stripe Webhook] Admin notification email sent for subscription payment success`);
+              }
+            } catch (emailError) {
+              this.logger.error(`[Stripe Webhook] Failed to send subscription payment confirmation emails: ${emailError?.message || emailError}`);
+            }
+          }
         }
         break;
       }

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Payment Selected - Gemini Cleaning Services</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #4CAF50;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .booking-details {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .booking-details h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .booking-details ul {
+            list-style: none;
+            padding: 0;
+        }
+        .booking-details li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .booking-details li:last-child {
+            border-bottom: none;
+        }
+        .important-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .highlight {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cash Payment Selected</h1>
+            <p>Thank you for choosing Gemini Cleaning Services</p>
+        </div>
+
+        <div class="content">
+            <p>Dear <strong>{{name}}</strong>,</p>
+            
+            <p>We've received your request to pay with cash for your upcoming cleaning service. This is a great choice and we're happy to accommodate your preference.</p>
+
+            <div class="highlight">
+                <strong>Important:</strong> Please have the exact amount ready on the day of your service. Our team will collect payment before the cleaning starts.
+            </div>
+
+            <div class="booking-details">
+                <h3>📋 Booking Details</h3>
+                <ul>
+                    <li><strong>Service Type:</strong> {{serviceType}}</li>
+                    <li><strong>Scheduled Date:</strong> {{scheduledDate}}</li>
+                    <li><strong>Service Address:</strong> {{address}}</li>
+                    <li><strong>Amount Due:</strong> £{{price}}</li>
+                </ul>
+            </div>
+
+            <div class="important-note">
+                <strong>📝 What to Expect:</strong>
+                <ul>
+                    <li>Our cleaning team will arrive at your scheduled time</li>
+                    <li>Complete the cleaning service as agreed</li>
+                    <li>Collect payment in cash before the cleaning starts</li>
+                    {{!-- <li>Provide you with a receipt for your records</li> --}}
+                </ul>
+            </div>
+
+            <p>If you need to make any changes to your booking or have questions, please don't hesitate to contact us.</p>
+
+            <a href="{{dashboardUrl}}" class="cta-button">View My Bookings</a>
+        </div>
+
+        <div class="footer">
+            <p><strong>Gemini Cleaning Services</strong></p>
+            <p>Professional cleaning services you can trust</p>
+            <p>📧 support@degeminiservices.co.uk | 📞 Contact us for any questions</p>
+        </div>
+    </div>
+</body>
+</html>

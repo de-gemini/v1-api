@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Status Update - Gemini Cleaning Services</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #2196F3;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2196F3;
+            margin: 0;
+            font-size: 24px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 10px 0;
+        }
+        .status-pending { background-color: #FF9800; }
+        .status-confirmed { background-color: #2196F3; }
+        .status-completed { background-color: #4CAF50; }
+        .status-cancelled { background-color: #F44336; }
+        .content {
+            margin-bottom: 30px;
+        }
+        .booking-details {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Booking Status Update</h1>
+            <p>Your cleaning service status has been updated</p>
+        </div>
+
+        <div class="content">
+            <p>Dear <strong>{{name}}</strong>,</p>
+            
+            <p>We wanted to let you know that there has been an update to your cleaning service booking.</p>
+
+            <div class="booking-details">
+                <h3>📋 Booking Details</h3>
+                <ul>
+                    <li><strong>Service Type:</strong> {{serviceType}}</li>
+                    <li><strong>Scheduled Date:</strong> {{scheduledDate}}</li>
+                    <li><strong>Address:</strong> {{address}}</li>
+                    <li><strong>Price:</strong> £{{price}}</li>
+                    <li><strong>Current Status:</strong> 
+                        <span class="status-badge status-{{status}}">{{status}}</span>
+                    </li>
+                </ul>
+            </div>
+
+            {{#if (eq status 'confirmed')}}
+            <p>🎉 Great news! Your cleaning service has been confirmed and is scheduled to take place. Our team will arrive at the scheduled time.</p>
+            <p><strong>Please ensure:</strong></p>
+            <ul>
+                <li>Access to your property is available</li>
+                <li>Any valuable items are secured</li>
+                <li>Pets are safely contained if needed</li>
+            </ul>
+            {{/if}}
+
+            {{#if (eq status 'completed')}}
+            <p>✅ Your cleaning service has been completed successfully! We hope you're satisfied with the results.</p>
+            <p>If you have any feedback or concerns, please don't hesitate to reach out to us.</p>
+            {{/if}}
+
+            {{#if (eq status 'cancelled')}}
+            <p>❌ Your booking has been cancelled. If you have any questions about this cancellation or would like to reschedule, please contact us.</p>
+            {{/if}}
+
+            <p>If you have any questions about this status update, please don't hesitate to contact us.</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>Gemini Cleaning Services</strong></p>
+            <p>Professional cleaning services you can trust</p>
+            <p>📧 support@degeminiservices.co.uk | 📞 Contact us for any questions</p>
+        </div>
+    </div>
+</body>
+</html>
