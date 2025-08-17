@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument, UserRole } from '../users/schemas/user.schema';
@@ -6,12 +6,21 @@ import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AdminRegisterDto } from './dto/admin-register.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Otp, OtpDocument } from './schemas/otp.schema';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private jwtService: JwtService,
+    @InjectModel(Otp.name) private otpModel: Model<OtpDocument>,
+    private readonly mailService: MailService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -136,5 +145,77 @@ export class AuthService {
     await this.usersService.updateUser(userId, { password: hashedNewPassword });
 
     return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const { email } = forgotPasswordDto;
+    
+    // Check if user exists
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Generate 4-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    // Delete any existing OTP for this email
+    await this.otpModel.deleteOne({ email });
+    
+    // Create new OTP record
+    await this.otpModel.create({
+      email,
+      otp,
+    });
+
+    // Send OTP email
+    try {
+      await this.mailService.sendOtpEmail(user, otp);
+    } catch (error) {
+      // Delete OTP if email fails
+      await this.otpModel.deleteOne({ email });
+      throw new BadRequestException('Failed to send OTP email');
+    }
+
+    return { message: 'OTP sent to your email' };
+  }
+
+  async verifyOtp(verifyOtpDto: VerifyOtpDto) {
+    const { email, otp } = verifyOtpDto;
+    
+    // Find OTP record
+    const otpRecord = await this.otpModel.findOne({ email, otp });
+    if (!otpRecord) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    // Check if OTP is expired (handled by MongoDB TTL)
+    if (otpRecord.createdAt < new Date(Date.now() - 5 * 60 * 1000)) {
+      await this.otpModel.deleteOne({ email });
+      throw new BadRequestException('OTP has expired');
+    }
+
+    // Delete OTP after successful verification
+    await this.otpModel.deleteOne({ email });
+
+    return { message: 'OTP verified successfully' };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
+    const { email, newPassword } = resetPasswordDto;
+    
+    // Check if user exists
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update user password
+    await this.usersService.updateUser(user._id, { password: hashedPassword });
+
+    return { message: 'Password reset successfully' };
   }
 } 

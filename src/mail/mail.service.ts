@@ -400,4 +400,16 @@ export class MailService {
       `,
     });
   }
+
+  async sendOtpEmail(user: User, otp: string) {
+    await this.mailerService.sendMail({
+      to: user.email,
+      subject: 'Password Reset OTP - Gemini Cleaning Services',
+      template: './otp-email',
+      context: {
+        name: user.name,
+        otp: otp,
+      },
+    });
+  }
 } 
