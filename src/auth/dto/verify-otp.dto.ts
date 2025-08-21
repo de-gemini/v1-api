@@ -10,3 +10,4 @@ export class VerifyOtpDto {
   @Length(4, 4)
   otp: string;
 }
+

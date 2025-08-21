@@ -226,13 +226,18 @@ export class BookingsService extends BaseRepository<BookingDocument> {
       const booking = schedule.booking as any;
       const user = booking.user;
       
+      // Ensure schedule._id is a valid ObjectId before calling toString()
+      const scheduleIdStr = typeof schedule._id === 'object' && schedule._id !== null && typeof schedule._id.toString === 'function'
+        ? schedule._id.toString()
+        : String(schedule._id);
+
       if (user && ['confirmed', 'completed', 'cancelled'].includes(status)) {
         // Send notification to user
-        await this.mailService.sendBookingStatusUpdate(user, booking, status);
+        await this.mailService.sendBookingStatusUpdate(user, booking, status, scheduleIdStr);
         console.log(`[DEBUG] Status update email sent to user ${user.email} for status: ${status}`);
         
         // Send notification to admins
-        await this.mailService.notifyAdminsOfStatusChange(user, booking, status);
+        await this.mailService.notifyAdminsOfStatusChange(user, booking, status, scheduleIdStr);
         console.log(`[DEBUG] Admin notification email sent for status change: ${status}`);
       }
     } catch (emailError) {

@@ -17,16 +17,24 @@ export class MailService {
   ) {}
 
   async sendBookingConfirmation(user: User, booking: Booking) {
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
     await this.mailerService.sendMail({
       to: user.email,
@@ -44,16 +52,24 @@ export class MailService {
   }
 
   async sendPaymentConfirmation(user: User, booking: Booking, amount: number, paymentMethod: string) {
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
     await this.mailerService.sendMail({
       to: user.email,
@@ -79,9 +95,24 @@ export class MailService {
 
     const subject = `Payment Successful - ${user.name} - ${booking.serviceType}`;
 
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleString('en-GB');
+    }
+
+    // Get schedule ID for this booking
+    const primarySchedule = await this.scheduleModel
+      .findOne({ booking: booking._id })
+      .sort({ startDate: 1 })
+      .exec();
+    const scheduleIdToUse = primarySchedule?._id?.toString() || 'N/A';
 
     await this.mailerService.sendMail({
       to: recipients[0],
@@ -104,7 +135,7 @@ export class MailService {
             <li>Amount Paid: £${amount}</li>
             <li>Frequency: ${booking.frequency}</li>
           </ul>
-          <p>Booking ID: ${booking._id}</p>
+          <p>Schedule ID: ${scheduleIdToUse}</p>
           <p><strong>Status: Payment completed - Booking now confirmed</strong></p>
         </div>
       `,
@@ -120,9 +151,24 @@ export class MailService {
 
     const subject = `New Booking Created - ${user.name} - ${booking.serviceType}`;
 
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleString('en-GB');
+    }
+
+    // Get schedule ID for this booking
+    const primarySchedule = await this.scheduleModel
+      .findOne({ booking: booking._id })
+      .sort({ startDate: 1 })
+      .exec();
+    const scheduleIdToUse = primarySchedule?._id?.toString() || 'N/A';
 
     await this.mailerService.sendMail({
       to: recipients[0],
@@ -145,7 +191,7 @@ export class MailService {
             <li>Estimated Price: £${booking.estimatedPrice}</li>
             <li>Frequency: ${booking.frequency}</li>
           </ul>
-          <p>Booking ID: ${booking._id}</p>
+          <p>Schedule ID: ${scheduleIdToUse}</p>
         </div>
       `,
     });
@@ -214,15 +260,18 @@ export class MailService {
     }
   }
 
-  async sendBookingStatusUpdate(user: User, booking: Booking, status?: string) {
+  async sendBookingStatusUpdate(user: User, booking: Booking, status?: string, scheduleId?: string) {
     // Use provided status or get from primary schedule
     let finalStatus = status;
-    if (!finalStatus) {
+    let scheduleIdToUse = scheduleId;
+    
+    if (!finalStatus || !scheduleIdToUse) {
       const primarySchedule = await this.scheduleModel
         .findOne({ booking: booking._id })
         .sort({ startDate: 1 })
         .exec();
-      finalStatus = primarySchedule?.status || 'pending';
+      finalStatus = finalStatus || primarySchedule?.status || 'pending';
+      scheduleIdToUse = scheduleIdToUse || primarySchedule?._id?.toString() || 'N/A';
     }
 
     // Determine subject based on status
@@ -241,16 +290,24 @@ export class MailService {
         subject = `Schedule Status Update - ${finalStatus}`;
     }
 
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
     await this.mailerService.sendMail({
       to: user.email,
@@ -263,6 +320,7 @@ export class MailService {
         status: finalStatus,
         address: booking.address,
         price: booking.estimatedPrice,
+        scheduleId: scheduleIdToUse,
       },
     });
   }
@@ -294,16 +352,24 @@ export class MailService {
   }
 
   async sendCashPaymentNotification(user: User, booking: Booking) {
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
     await this.mailerService.sendMail({
       to: user.email,
@@ -329,9 +395,24 @@ export class MailService {
 
     const subject = `Cash Payment Selected - ${user.name} - ${booking.serviceType}`;
 
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleString('en-GB');
+    }
+
+    // Get schedule ID for this booking
+    const primarySchedule = await this.scheduleModel
+      .findOne({ booking: booking._id })
+      .sort({ startDate: 1 })
+      .exec();
+    const scheduleIdToUse = primarySchedule?._id?.toString() || 'N/A';
 
     await this.mailerService.sendMail({
       to: recipients[0],
@@ -354,7 +435,7 @@ export class MailService {
             <li>Estimated Price: £${booking.estimatedPrice}</li>
             <li>Frequency: ${booking.frequency}</li>
           </ul>
-          <p>Booking ID: ${booking._id}</p>
+          <p>Schedule ID: ${scheduleIdToUse}</p>
           <p><strong>Status: Cash payment selected - Payment pending</strong></p>
           <p><em>Note: Customer will pay in cash on the day of service.</em></p>
         </div>
@@ -362,18 +443,36 @@ export class MailService {
     });
   }
 
-  async notifyAdminsOfStatusChange(user: User, booking: Booking, status: string) {
+  async notifyAdminsOfStatusChange(user: User, booking: Booking, status: string, scheduleId?: string) {
     const recipients = getValidAdminEmails();
     if (recipients.length === 0) {
       this.logger.warn('No valid admin emails configured, skipping admin notification');
       return;
     }
 
-    const subject = `Booking Status Changed - ${status} - ${user.name} - ${booking.serviceType}`;
+    const subject = `Schedule Status Changed - ${status} - ${user.name} - ${booking.serviceType}`;
 
-    // Use the most appropriate date field
+    // Use the most appropriate date field with proper UK timezone handling
     const scheduledDate = booking.scheduledDateTime || booking.scheduledDate;
-    const formattedDate = scheduledDate ? new Date(scheduledDate).toLocaleString('en-GB') : 'To be scheduled';
+    let formattedDate = 'To be scheduled';
+    
+    if (scheduledDate) {
+      const date = new Date(scheduledDate);
+      // Convert to UK timezone (BST/GMT)
+      const ukDate = new Date(date.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      
+      formattedDate = ukDate.toLocaleString('en-GB');
+    }
+
+    // Get schedule ID if not provided
+    let scheduleIdToUse = scheduleId;
+    if (!scheduleIdToUse) {
+      const primarySchedule = await this.scheduleModel
+        .findOne({ booking: booking._id })
+        .sort({ startDate: 1 })
+        .exec();
+      scheduleIdToUse = primarySchedule?._id?.toString() || 'N/A';
+    }
 
     await this.mailerService.sendMail({
       to: recipients[0],
@@ -388,12 +487,13 @@ export class MailService {
             <li>Name: ${user.name}</li>
             <li>Email: ${user.email}</li>
           </ul>
-          <h3>Booking Details</h3>
+          <h3>Schedule Details</h3>
           <ul>
             <li>Service Type: ${booking.serviceType}</li>
             <li>Scheduled Date: ${formattedDate}</li>
             <li>Address: ${booking.address}</li>
             <li>Price: £${booking.estimatedPrice}</li>
+            <li>Schedule ID: ${scheduleIdToUse}</li>
             <li>New Status: <strong>${status}</strong></li>
           </ul>
         </div>

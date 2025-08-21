@@ -16,3 +16,4 @@ export class Otp {
 }
 
 export const OtpSchema = SchemaFactory.createForClass(Otp);
+
